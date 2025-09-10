@@ -1,6 +1,6 @@
 # Configserver-propertysource
 
-The package provides configserver property source which is intended for [Configloader](../configloader/README.md).
+The package provides configserver property source which is intended for [Configloader](https://github.com/Netcracker/qubership-core-lib-go/blob/main/configloader/README.md).
  This property source allows downloading properties from a config-server service.
 
 - [How to get](#how-to-get)
@@ -14,7 +14,7 @@ To get `configserver-propertysource` use
  go get go github.com/netcracker/qubership-core-lib-go-rest-utils@<latest released version>
 ```
 
-List of all released versions may be found [here](https://github.com/netcracker/qubership-core-lib-go-rest-utils/-/tags)
+List of all released versions may be found [here](https://github.com/netcracker/qubership-core-lib-go-rest-utils/tags)
 
 ## Usage
 
