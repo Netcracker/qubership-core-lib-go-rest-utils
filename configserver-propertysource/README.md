@@ -53,6 +53,6 @@ PropertySourceConfiguration has such fields as:
 |Property Name | Description | Default |
 |--------------|-------------|---------|
 |MicroserviceName | This is microservice name |none `mandatory`|
-|ConfigServerUrl| Allows to configure config-server url. |http://config-server:8080|
+|ConfigServerUrl| Allows to configure config-server url. |`http://config-server:8080`|
 
 
