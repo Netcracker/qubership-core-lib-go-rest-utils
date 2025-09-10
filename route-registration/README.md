@@ -17,7 +17,7 @@ To get `route-registration` use
  go get github.com/netcracker/qubership-core-lib-go-rest-utils/@<latest released version>
 ```
 
-List of all released versions may be found [here](https://github.com/netcracker/qubership-core-lib-go-rest-utils/-/tags)
+List of all released versions may be found [here](https://github.com/netcracker/qubership-core-lib-go-rest-utils/tags)
 
 ## Usage
 
@@ -106,7 +106,7 @@ _Please note that_
 * when Route#RouteType is empty and Route#Gateway is border gateway, Route#Gateway is threated as RouteType: 3 routes will be registered
 * when Route#RouteType and Route#Gateway are not empty and have conflict, library panics with error message.
 
-To find more info about gateways see [Gateways](https://github.com/netcracker/control-plane/blob/main/docs/mesh/development-guide.md#gateway-types)
+To find more info about gateways see [Gateways](https://github.com/netcracker/qubership-core-control-plane/blob/main/docs/mesh/development-guide.md#gateway-types)
 
 ## Quick example
 
