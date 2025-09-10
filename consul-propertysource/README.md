@@ -1,6 +1,6 @@
 # Consul-propertysource
 
-The package provides Consul property source which is intended for [Configloader](../configloader/README.md).
+The package provides Consul property source which is intended for [Configloader](https://github.com/Netcracker/qubership-core-lib-go/blob/main/configloader/README.md).
 This property source allows downloading properties from a Consul service.
 
 - [How to get](#how-to-get)
@@ -13,7 +13,7 @@ To get `consul-propertysource` use
  go get github.com/netcracker/qubership-core-lib-go-rest-utils/@<latest released version>
 ```
 
-List of all released versions may be found [here](https://github.com/netcracker/qubership-core-lib-go-rest-utils/-/tags)
+List of all released versions may be found [here](https://github.com/netcracker/qubership-core-lib-go-rest-utils/tags)
 
 ## Usage
 
