@@ -2,7 +2,7 @@ module github.com/netcracker/qubership-core-lib-go-rest-utils/v2
 
 go 1.23.8
 
-toolchain go1.24.2
+toolchain go1.25.1
 
 require (
 	github.com/avast/retry-go/v4 v4.6.1
