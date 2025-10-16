@@ -3,7 +3,7 @@ module github.com/netcracker/qubership-core-lib-go-rest-utils/v2
 go 1.25.3
 
 require (
-	github.com/avast/retry-go/v4 v4.6.1
+	github.com/avast/retry-go/v4 v4.7.0
 	github.com/hashicorp/consul/api v1.32.4
 	github.com/knadh/koanf/maps v0.1.2
 	github.com/knadh/koanf/v2 v2.3.0
