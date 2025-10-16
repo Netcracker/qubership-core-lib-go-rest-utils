@@ -1,10 +1,10 @@
 module github.com/netcracker/qubership-core-lib-go-rest-utils/v2
 
-go 1.25.1
+go 1.25.3
 
 require (
 	github.com/avast/retry-go/v4 v4.6.1
-	github.com/hashicorp/consul/api v1.32.3
+	github.com/hashicorp/consul/api v1.32.4
 	github.com/knadh/koanf/maps v0.1.2
 	github.com/knadh/koanf/v2 v2.3.0
 	github.com/netcracker/qubership-core-lib-go/v3 v3.1.1
@@ -35,7 +35,6 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
-	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
