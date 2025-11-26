@@ -220,6 +220,8 @@ github.com/netcracker/qubership-core-lib-go/v3 v3.2.1 h1:DGOSodlWbrmW3YWAYYH3ZKL
 github.com/netcracker/qubership-core-lib-go/v3 v3.2.1/go.mod h1:ql9/u1YHG9LBLJxV9dm+xAy2hOiUAC7dZx8nS+wdttw=
 github.com/netcracker/qubership-core-lib-go/v3 v3.2.2 h1:kcbzG8TMRlk2XvMKThHU+yD4eyOPq5+BeZd2zq/4TTo=
 github.com/netcracker/qubership-core-lib-go/v3 v3.2.2/go.mod h1:ql9/u1YHG9LBLJxV9dm+xAy2hOiUAC7dZx8nS+wdttw=
+github.com/netcracker/qubership-core-lib-go/v3 v3.2.3 h1:3XzobpXMi7QZHuKaDeZxxc2bSUT8Ye4CCFM0+suAjYU=
+github.com/netcracker/qubership-core-lib-go/v3 v3.2.3/go.mod h1:ql9/u1YHG9LBLJxV9dm+xAy2hOiUAC7dZx8nS+wdttw=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e h1:fD57ERR4JtEqsWbfPhv4DMiApHyliiK5xCTNVSPiaAs=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
 github.com/pascaldekloe/goe v0.1.0 h1:cBOtyMzM9HTpWjXfbbunk26uA6nG3a8n06Wieeh0MwY=
