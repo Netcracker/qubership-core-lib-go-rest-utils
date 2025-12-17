@@ -20,6 +20,10 @@ import (
 
 var logger logging.Logger
 
+func init() {
+	logger = logging.GetLogger("config-server-loader")
+}
+
 type configServerLoader struct {
 	propertySourceConfiguration *PropertySourceConfiguration
 }
