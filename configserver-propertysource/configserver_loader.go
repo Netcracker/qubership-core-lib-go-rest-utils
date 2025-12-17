@@ -6,18 +6,19 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"log"
 	"net/http"
 
 	"github.com/knadh/koanf/maps"
 	"github.com/knadh/koanf/v2"
 	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
 	constants "github.com/netcracker/qubership-core-lib-go/v3/const"
+	"github.com/netcracker/qubership-core-lib-go/v3/logging"
 	"github.com/netcracker/qubership-core-lib-go/v3/security"
 	"github.com/netcracker/qubership-core-lib-go/v3/serviceloader"
 	"github.com/netcracker/qubership-core-lib-go/v3/utils"
 )
+
+var logger logging.Logger
 
 type configServerLoader struct {
 	propertySourceConfiguration *PropertySourceConfiguration
@@ -55,7 +56,7 @@ func getConfigServerProperties(params *PropertySourceConfiguration) (map[string]
 	}
 	res, err := client.Do(req)
 	if err != nil {
-		log.Printf("Failed send requst to config-server: %s", err)
+		logger.Error("Failed send request to config-server: %s", err)
 		return nil, err
 	}
 	defer res.Body.Close()
@@ -63,20 +64,20 @@ func getConfigServerProperties(params *PropertySourceConfiguration) (map[string]
 }
 
 func parseBody(body io.Reader) (map[string]interface{}, error) {
-	restBody, readErr := ioutil.ReadAll(body)
-	if readErr != nil {
-		log.Print(readErr)
-		return nil, readErr
+	restBody, err := io.ReadAll(body)
+	if err != nil {
+		logger.Error("Failed to read response body: %s", err)
+		return nil, err
 	}
 
 	configserverEnv := configserverEnv{}
-	jsonErr := json.Unmarshal(restBody, &configserverEnv)
-	if jsonErr != nil {
-		log.Print(jsonErr)
-		return nil, jsonErr
+	err = json.Unmarshal(restBody, &configserverEnv)
+	if err != nil {
+		logger.Error("Failed to unmarshal response body: %s", err)
+		return nil, err
 	}
 	if len(configserverEnv.PropertySources) == 0 {
-		log.Printf("PropertySources is empty for '%s'", configserverEnv.Name)
+		logger.Warn("PropertySources is empty for '%s'", configserverEnv.Name)
 		return make(map[string]interface{}), nil
 	}
 	return configserverEnv.PropertySources[0].Source, nil
