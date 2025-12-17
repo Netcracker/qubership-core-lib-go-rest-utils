@@ -18,11 +18,7 @@ import (
 	"github.com/netcracker/qubership-core-lib-go/v3/utils"
 )
 
-var logger logging.Logger
-
-func init() {
-	logger = logging.GetLogger("config-server-loader")
-}
+var logger = logging.GetLogger("config-server-loader")
 
 type configServerLoader struct {
 	propertySourceConfiguration *PropertySourceConfiguration
