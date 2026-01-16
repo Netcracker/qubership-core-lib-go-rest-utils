@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/avast/retry-go/v4"
+	"github.com/avast/retry-go/v5"
 	consulApi "github.com/hashicorp/consul/api"
 	"github.com/knadh/koanf/maps"
 	"github.com/knadh/koanf/v2"
