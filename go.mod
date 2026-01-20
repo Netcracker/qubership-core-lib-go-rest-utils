@@ -7,7 +7,7 @@ require (
 	github.com/hashicorp/consul/api v1.33.2
 	github.com/knadh/koanf/maps v0.1.2
 	github.com/knadh/koanf/v2 v2.3.0
-	github.com/netcracker/qubership-core-lib-go/v3 v3.3.0
+	github.com/netcracker/qubership-core-lib-go/v3 v3.3.1
 	github.com/stretchr/testify v1.11.1
 )
 
@@ -30,7 +30,7 @@ require (
 	github.com/hashicorp/serf v0.10.2 // indirect
 	github.com/knadh/koanf/parsers/yaml v1.0.0 // indirect
 	github.com/knadh/koanf/providers/env v1.1.0 // indirect
-	github.com/knadh/koanf/providers/file v1.2.0 // indirect
+	github.com/knadh/koanf/providers/file v1.2.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
