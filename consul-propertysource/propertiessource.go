@@ -23,6 +23,8 @@ const (
 	thresholdBeforeUpdate = 2 * time.Minute
 )
 
+var refreshConfig = configloader.Refresh
+
 type ProviderConfig struct {
 	// Consul URL (default: value from consul.url)
 	Address string
@@ -250,15 +252,9 @@ func kvPairsAsMap(kvPairs consulApi.KVPairs, addTo map[string]interface{}) {
 }
 func WatchForProperties(consulPropertySource *configloader.PropertySource, projectFunc func(event interface{}, err error)) error {
 	provider := consulPropertySource.Provider.(Provider)
-	coreFunc := func() {
-		err := configloader.Refresh()
-		if err != nil {
-			logger.Errorf("error during refresh the configuration: %v", err)
-		}
-	}
 	cbFunc := func(event interface{}, err error) {
-		coreFunc()
-		projectFunc(event, err)
+		refreshErr := refreshConfig()
+		projectFunc(event, refreshErr)
 	}
 	err2 := provider.Watch(cbFunc)
 	if err2 != nil {
