@@ -3,6 +3,7 @@ package consul
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -506,6 +507,40 @@ func TestConsulCallsWatchMethod2(t *testing.T) {
 	counterValue = configloader.GetOrDefaultString("test-key-counter", "")
 	assert.Equal(t, "value-4", counterValue)
 }
+
+func TestWatchForProperties_RefreshErrorIsPropagated(t *testing.T) {
+	propertySources := []*configloader.PropertySource{configloader.EnvPropertySource()}
+	configloader.Init(propertySources...)
+
+	// Save & restore global refresh function
+	originalRefresh := refreshConfig
+	defer func() { refreshConfig = originalRefresh }()
+
+	// Force refresh failure
+	refreshConfig = func() error {
+		return errors.New("refresh failed")
+	}
+
+	// Mock provider triggers callback immediately
+	consulPropertySource := &configloader.PropertySource{
+		Provider: newMockProvider(),
+	}
+
+	var receivedErr error
+	projectFunc := func(event interface{}, err error) {
+		receivedErr = err
+	}
+
+	err := WatchForProperties(consulPropertySource, projectFunc)
+
+	// Watch registration should succeed
+	assert.NoError(t, err)
+
+	// Refresh error must be passed to project callback
+	assert.Error(t, receivedErr)
+	assert.EqualError(t, receivedErr, "refresh failed")
+}
+
 
 type MockProvider struct {
 }
