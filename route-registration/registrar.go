@@ -29,7 +29,7 @@ const (
 	IstioServiceMeshType ServiceMeshType = "ISTIO"
 )
 
-type RoutesConsumerClient interface {
+type RequestSender interface {
 	SendRequest(request rest.RegistrationRequest)
 }
 
@@ -37,9 +37,9 @@ type registrar struct {
 	routesByGatewayMap  utils.RoutesByGateway
 	transformationRules map[RouteType]transformationRule
 
-	reqFactory           rest.RequestFactory
-	routesConsumerClient RoutesConsumerClient
-	config               *RegistrarConfig
+	reqFactory    rest.RequestFactory
+	requestSender RequestSender
+	config        *RegistrarConfig
 }
 
 func newRegistrar(config *RegistrarConfig) *registrar {
@@ -71,7 +71,7 @@ func newRegistrar(config *RegistrarConfig) *registrar {
 		},
 
 		reqFactory: v3.NewRequestFactory(namespace, microserviceUrl, microserviceName, deploymentVersion),
-		routesConsumerClient: rest.NewControlPlaneClient(controlPlaneAddr,
+		requestSender: rest.NewControlPlaneClient(controlPlaneAddr,
 			rest.NewRetryManager(rest.NewProgressiveTimeout(1*time.Second, 1, 10, 1))),
 		config: config,
 	}
@@ -106,7 +106,7 @@ func (registrar *registrar) Register() {
 
 	for _, request := range requests {
 		log.Infof("Request %+v is going to be sent to control plane", request.Payload())
-		registrar.routesConsumerClient.SendRequest(request)
+		registrar.requestSender.SendRequest(request)
 	}
 	log.Info("All routes were registered in control plane")
 }
