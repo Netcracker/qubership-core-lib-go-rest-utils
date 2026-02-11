@@ -1,10 +1,12 @@
 package routeregistration
 
 import (
+	"os"
 	"testing"
 
-	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
+	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/route-registration/internal/rest"
 	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/route-registration/internal/utils"
+	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -217,4 +219,60 @@ func createTestRoute(rType RouteType, gateway string, from string, to string) Ro
 func contains(routesMap utils.RoutesByGateway, key string) bool {
 	_, isFound := routesMap[key]
 	return isFound
+}
+
+func Test_registrar_Register(t *testing.T) {
+	defer os.Clearenv()
+	configloader.InitWithSourcesArray(configloader.BasePropertySources(params))
+
+	reg := NewRegistrar().(*registrar)
+	reg.requestSender = &TestRouteConsumerClient{}
+	reg.WithRoutes(createTestRoute(Public, "", pathFromV1, pathToV1))
+	reg.Register()
+	assert.True(t, reg.requestSender.(*TestRouteConsumerClient).SendRequestCalled)
+
+	os.Setenv("SERVICE_MESH_TYPE", "CORE")
+	reg = NewRegistrar().(*registrar)
+	reg.requestSender = &TestRouteConsumerClient{}
+	reg.WithRoutes(createTestRoute(Public, "", pathFromV1, pathToV1))
+	reg.Register()
+	assert.True(t, reg.requestSender.(*TestRouteConsumerClient).SendRequestCalled)
+
+	os.Setenv("SERVICE_MESH_TYPE", "ISTIO")
+	reg = NewRegistrar().(*registrar)
+	reg.requestSender = &TestRouteConsumerClient{}
+	reg.WithRoutes(createTestRoute(Public, "", pathFromV1, pathToV1))
+	reg.Register()
+	assert.False(t, reg.requestSender.(*TestRouteConsumerClient).SendRequestCalled)
+}
+
+func Test_registrar_Register_WithConfig(t *testing.T) {
+	defer os.Clearenv()
+	configloader.InitWithSourcesArray(configloader.BasePropertySources(params))
+
+	reg := NewRegistrarWithConfig(defaultRegistrarConfig()).(*registrar)
+	reg.requestSender = &TestRouteConsumerClient{}
+	reg.WithRoutes(createTestRoute(Public, "", pathFromV1, pathToV1))
+	reg.Register()
+	assert.True(t, reg.requestSender.(*TestRouteConsumerClient).SendRequestCalled)
+
+	reg = NewRegistrarWithConfig(&RegistrarConfig{ServiceMeshType: CoreServiceMeshType}).(*registrar)
+	reg.requestSender = &TestRouteConsumerClient{}
+	reg.WithRoutes(createTestRoute(Public, "", pathFromV1, pathToV1))
+	reg.Register()
+	assert.True(t, reg.requestSender.(*TestRouteConsumerClient).SendRequestCalled)
+
+	reg = NewRegistrarWithConfig(&RegistrarConfig{ServiceMeshType: IstioServiceMeshType}).(*registrar)
+	reg.requestSender = &TestRouteConsumerClient{}
+	reg.WithRoutes(createTestRoute(Public, "", pathFromV1, pathToV1))
+	reg.Register()
+	assert.False(t, reg.requestSender.(*TestRouteConsumerClient).SendRequestCalled)
+}
+
+type TestRouteConsumerClient struct {
+	SendRequestCalled bool
+}
+
+func (t *TestRouteConsumerClient) SendRequest(_ rest.RegistrationRequest) {
+	t.SendRequestCalled = true
 }
