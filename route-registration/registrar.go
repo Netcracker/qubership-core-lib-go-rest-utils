@@ -4,12 +4,12 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
-	"github.com/netcracker/qubership-core-lib-go/v3/logging"
 	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/route-registration/internal/rest"
 	v3 "github.com/netcracker/qubership-core-lib-go-rest-utils/v2/route-registration/internal/rest/v3"
 	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/route-registration/internal/utils"
+	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
 	"github.com/netcracker/qubership-core-lib-go/v3/const"
+	"github.com/netcracker/qubership-core-lib-go/v3/logging"
 )
 
 var log logging.Logger
@@ -18,15 +18,31 @@ func init() {
 	log = logging.GetLogger("routeregistration")
 }
 
+type ServiceMeshType string
+
+type RegistrarConfig struct {
+	ServiceMeshType ServiceMeshType
+}
+
+const (
+	CoreServiceMeshType  ServiceMeshType = "CORE"
+	IstioServiceMeshType ServiceMeshType = "ISTIO"
+)
+
+type RoutesConsumerClient interface {
+	SendRequest(request rest.RegistrationRequest)
+}
+
 type registrar struct {
 	routesByGatewayMap  utils.RoutesByGateway
 	transformationRules map[RouteType]transformationRule
 
-	reqFactory rest.RequestFactory
-	cpClient   *rest.ControlPlaneClient
+	reqFactory           rest.RequestFactory
+	routesConsumerClient RoutesConsumerClient
+	config               *RegistrarConfig
 }
 
-func newRegistrar() *registrar {
+func newRegistrar(config *RegistrarConfig) *registrar {
 	namespace := configloader.GetOrDefaultString("microservice.namespace", "")
 	namespace = utils.FormatCloudNamespace(namespace)
 	microserviceName, err := utils.GetMicroserviceName()
@@ -55,8 +71,11 @@ func newRegistrar() *registrar {
 		},
 
 		reqFactory: v3.NewRequestFactory(namespace, microserviceUrl, microserviceName, deploymentVersion),
-		cpClient: rest.NewControlPlaneClient(controlPlaneAddr,
-			rest.NewRetryManager(rest.NewProgressiveTimeout(1*time.Second, 1, 10, 1)))}
+		routesConsumerClient: rest.NewControlPlaneClient(controlPlaneAddr,
+			rest.NewRetryManager(rest.NewProgressiveTimeout(1*time.Second, 1, 10, 1))),
+		config: config,
+	}
+
 }
 
 func (registrar *registrar) WithRoutes(routes ...Route) Registrar {
@@ -78,11 +97,16 @@ func (registrar *registrar) WithRoutes(routes ...Route) Registrar {
 }
 
 func (registrar *registrar) Register() {
+	if registrar.config.ServiceMeshType == IstioServiceMeshType {
+		log.Infof("mesh type is istio; skip routes registration")
+		return
+	}
+
 	requests := registrar.reqFactory.NewRequests(registrar.routesByGatewayMap)
 
 	for _, request := range requests {
 		log.Infof("Request %+v is going to be sent to control plane", request.Payload())
-		registrar.cpClient.SendRequest(request)
+		registrar.routesConsumerClient.SendRequest(request)
 	}
 	log.Info("All routes were registered in control plane")
 }
