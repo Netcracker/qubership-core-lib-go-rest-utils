@@ -91,8 +91,7 @@ func FormatMicroserviceInternalURL(microserviceName string) string {
 func FormatCloudNamespace(cloudNamespace string) string {
 	resolvedNamespace := cloudNamespace
 
-	localDevNamespace := os.Getenv("LOCALDEV_NAMESPACE")
-	if len(localDevNamespace) > 0 {
+	if localDevNamespace, found := os.LookupEnv("LOCALDEV_NAMESPACE"); found {
 		resolvedNamespace = localDevNamespace
 	}
 
