@@ -1,11 +1,14 @@
 package routeregistration
 
 import (
+	"os"
 	"testing"
 
-	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
+	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/route-registration/internal/rest"
 	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/route-registration/internal/utils"
+	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -217,4 +220,100 @@ func createTestRoute(rType RouteType, gateway string, from string, to string) Ro
 func contains(routesMap utils.RoutesByGateway, key string) bool {
 	_, isFound := routesMap[key]
 	return isFound
+}
+
+func Test_registrar_Register_WithConfig(t *testing.T) {
+	configloader.InitWithSourcesArray(configloader.BasePropertySources(params))
+
+	reg := NewRegistrarWithConfig(&RegistrarConfig{ServiceMeshType: CoreServiceMeshType}).(*registrar)
+	reg.requestSender = &TestRouteConsumerClient{}
+	reg.WithRoutes(createTestRoute(Public, "", pathFromV1, pathToV1))
+	reg.Register()
+	assert.True(t, reg.requestSender.(*TestRouteConsumerClient).SendRequestCalled)
+
+	reg = NewRegistrarWithConfig(&RegistrarConfig{ServiceMeshType: IstioServiceMeshType}).(*registrar)
+	reg.requestSender = &TestRouteConsumerClient{}
+	reg.WithRoutes(createTestRoute(Public, "", pathFromV1, pathToV1))
+	reg.Register()
+	assert.False(t, reg.requestSender.(*TestRouteConsumerClient).SendRequestCalled)
+}
+
+func Test_defaultRegistrarConfig(t *testing.T) {
+	t.Run("defaults to Core when topology file not found", func(t *testing.T) {
+		t.Setenv("TOPOLOGY_CONFIG_PATH", "/nonexistent/topology.json")
+
+		config := defaultRegistrarConfig()
+		assert.Equal(t, CoreServiceMeshType, config.ServiceMeshType)
+	})
+
+	t.Run("defaults to Core when topology file is malformed", func(t *testing.T) {
+		f := createTopologyFile(t, `not valid json`)
+		t.Setenv("TOPOLOGY_CONFIG_PATH", f)
+
+		config := defaultRegistrarConfig()
+		assert.Equal(t, CoreServiceMeshType, config.ServiceMeshType)
+	})
+
+	t.Run("defaults to Core when serviceMeshType is empty", func(t *testing.T) {
+		f := createTopologyFile(t, `{"featureFlags":{"core":{"serviceMeshType":""}}}`)
+		t.Setenv("TOPOLOGY_CONFIG_PATH", f)
+
+		config := defaultRegistrarConfig()
+		assert.Equal(t, CoreServiceMeshType, config.ServiceMeshType)
+	})
+
+	t.Run("defaults to Core when serviceMeshType is unknown", func(t *testing.T) {
+		f := createTopologyFile(t, `{"featureFlags":{"core":{"serviceMeshType":"UNKNOWN"}}}`)
+		t.Setenv("TOPOLOGY_CONFIG_PATH", f)
+
+		config := defaultRegistrarConfig()
+		assert.Equal(t, CoreServiceMeshType, config.ServiceMeshType)
+	})
+
+	t.Run("returns Core when serviceMeshType is CORE", func(t *testing.T) {
+		f := createTopologyFile(t, `{"featureFlags":{"core":{"serviceMeshType":"CORE"}}}`)
+		t.Setenv("TOPOLOGY_CONFIG_PATH", f)
+
+		config := defaultRegistrarConfig()
+		assert.Equal(t, CoreServiceMeshType, config.ServiceMeshType)
+	})
+
+	t.Run("returns Istio when serviceMeshType is ISTIO", func(t *testing.T) {
+		f := createTopologyFile(t, `{"featureFlags":{"core":{"serviceMeshType":"ISTIO"}}}`)
+		t.Setenv("TOPOLOGY_CONFIG_PATH", f)
+
+		config := defaultRegistrarConfig()
+		assert.Equal(t, IstioServiceMeshType, config.ServiceMeshType)
+	})
+
+	t.Run("is case insensitive", func(t *testing.T) {
+		f := createTopologyFile(t, `{"featureFlags":{"core":{"serviceMeshType":"istio"}}}`)
+		t.Setenv("TOPOLOGY_CONFIG_PATH", f)
+
+		config := defaultRegistrarConfig()
+		assert.Equal(t, IstioServiceMeshType, config.ServiceMeshType)
+	})
+
+	t.Run("uses hardcoded path when env var is not set", func(t *testing.T) {
+		config := defaultRegistrarConfig()
+		assert.NotNil(t, config)
+	})
+}
+
+func createTopologyFile(t *testing.T, content string) string {
+	t.Helper()
+	f, err := os.CreateTemp(t.TempDir(), "topology-*.json")
+	require.NoError(t, err)
+	_, err = f.WriteString(content)
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	return f.Name()
+}
+
+type TestRouteConsumerClient struct {
+	SendRequestCalled bool
+}
+
+func (t *TestRouteConsumerClient) SendRequest(_ rest.RegistrationRequest) {
+	t.SendRequestCalled = true
 }
