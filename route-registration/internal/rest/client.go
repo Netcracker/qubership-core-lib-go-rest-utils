@@ -58,11 +58,11 @@ func (client *ControlPlaneClient) getApiUrl(request RegistrationRequest) (string
 func (client *ControlPlaneClient) SendRequest(request RegistrationRequest) {
 	url, err := client.getApiUrl(request)
 	if err != nil {
-		log.Panicf("Failed to resolve api version: %v", err)
+		log.Panicf("Failed to resolve api version: %+v", err)
 	}
 	payload, err := json.Marshal(request.Payload())
 	if err != nil {
-		log.Panicf("Failed to marshall route registration request to JSON: %v", err)
+		log.Panicf("Failed to marshall route registration request to JSON: %+v", err)
 	}
 
 	client.sendRequestWithRetry(url, payload)
@@ -114,7 +114,7 @@ func (rm *RetryManager) DoWithRetry(action func() error) {
 		}
 	}()
 	if err := action(); err != nil {
-		log.Panicf("Action failed with error: %v", err)
+		log.Panicf("Action failed with error: %+v", err)
 	}
 	rm.progressiveTimeout.Reset()
 }
