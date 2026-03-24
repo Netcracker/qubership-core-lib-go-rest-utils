@@ -207,7 +207,7 @@ func (r *Client) subscribeFor(path string, keyIndex uint64, cb func(event interf
 				func() error {
 					err := r.Login()
 					if err != nil {
-						logger.Errorf("Error during login to Consul: %w", err)
+						logger.Errorf("Error during login to Consul: %s", err)
 						return fmt.Errorf("error during login to Consul: %w", err)
 					}
 
