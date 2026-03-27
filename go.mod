@@ -4,7 +4,7 @@ go 1.26.1
 
 require (
 	github.com/avast/retry-go/v4 v4.7.0
-	github.com/hashicorp/consul/api v1.33.5
+	github.com/hashicorp/consul/api v1.33.7
 	github.com/knadh/koanf/maps v0.1.2
 	github.com/knadh/koanf/v2 v2.3.4
 	github.com/netcracker/qubership-core-lib-go/v3 v3.7.3
