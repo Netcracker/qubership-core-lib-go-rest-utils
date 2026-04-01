@@ -1,7 +1,6 @@
 package routeregistration
 
 import (
-	"encoding/json"
 	"os"
 	"strings"
 	"time"
@@ -58,38 +57,15 @@ func NewRegistrarWithConfig(config *RegistrarConfig) Registrar {
 func defaultRegistrarConfig() *RegistrarConfig {
 	serviceMeshType := CoreServiceMeshType
 
-	topologyPath := "/etc/topology.json"
-	if envPath := os.Getenv("TOPOLOGY_CONFIG_PATH"); envPath != "" {
-		topologyPath = envPath
-	}
-
-	data, err := os.ReadFile(topologyPath)
-	if err != nil {
-		log.Error("failed to read topology config, defaulting to %s: %w", serviceMeshType, err)
-		return &RegistrarConfig{ServiceMeshType: serviceMeshType}
-	}
-
-	var topology struct {
-		FeatureFlags struct {
-			Core struct {
-				ServiceMeshType string `json:"serviceMeshType"`
-			} `json:"core"`
-		} `json:"featureFlags"`
-	}
-
-	if err := json.Unmarshal(data, &topology); err != nil {
-		log.Error("failed to parse topology config, defaulting to %s: %w", serviceMeshType, err)
-		return &RegistrarConfig{ServiceMeshType: serviceMeshType}
-	}
-
-	if value := topology.FeatureFlags.Core.ServiceMeshType; value != "" {
-		switch ServiceMeshType(strings.ToUpper(value)) {
+	if serviceMeshTypeEnv, ok := os.LookupEnv("SERVICE_MESH_TYPE"); ok {
+		switch ServiceMeshType(strings.ToUpper(serviceMeshTypeEnv)) {
 		case IstioServiceMeshType:
 			serviceMeshType = IstioServiceMeshType
 		case CoreServiceMeshType:
 			serviceMeshType = CoreServiceMeshType
 		default:
-			log.Error("unknown serviceMeshType %q, defaulting to %s", value, serviceMeshType)
+			serviceMeshType = CoreServiceMeshType
+			log.Error("unknown serviceMeshType %q, defaulting to %s", serviceMeshTypeEnv, serviceMeshType)
 		}
 	}
 
