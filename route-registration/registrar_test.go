@@ -389,6 +389,39 @@ func TestWithRoutes_AccumulatesRoutesAcrossCalls(t *testing.T) {
 	assert.Equal(t, 2, len(reg.routesByGatewayMap[PublicGatewayService]))
 }
 
+func TestServiceMeshType_Constants(t *testing.T) {
+	assert.Equal(t, ServiceMeshType("CORE"), CoreServiceMeshType)
+	assert.Equal(t, ServiceMeshType("ISTIO"), IstioServiceMeshType)
+}
+
+func TestServiceMeshType_IsString(t *testing.T) {
+	var meshType ServiceMeshType = "CORE"
+	assert.Equal(t, "CORE", string(meshType))
+}
+
+func TestRegistrarConfig_CoreServiceMeshType(t *testing.T) {
+	config := &RegistrarConfig{ServiceMeshType: CoreServiceMeshType}
+	assert.Equal(t, CoreServiceMeshType, config.ServiceMeshType)
+}
+
+func TestRegistrarConfig_IstioServiceMeshType(t *testing.T) {
+	config := &RegistrarConfig{ServiceMeshType: IstioServiceMeshType}
+	assert.Equal(t, IstioServiceMeshType, config.ServiceMeshType)
+}
+
+func TestRegistrarConfig_CustomServiceMeshType(t *testing.T) {
+	customType := ServiceMeshType("CUSTOM")
+	config := &RegistrarConfig{ServiceMeshType: customType}
+	assert.Equal(t, ServiceMeshType("CUSTOM"), config.ServiceMeshType)
+}
+
+func TestRegistrarConfig_ZeroValue(t *testing.T) {
+	config := &RegistrarConfig{}
+	assert.Equal(t, ServiceMeshType(""), config.ServiceMeshType)
+	assert.NotEqual(t, CoreServiceMeshType, config.ServiceMeshType)
+	assert.NotEqual(t, IstioServiceMeshType, config.ServiceMeshType)
+}
+
 type TestRouteConsumerClient struct {
 	SendRequestCalled bool
 }
