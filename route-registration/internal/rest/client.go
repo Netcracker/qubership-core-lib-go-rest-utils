@@ -11,11 +11,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/netcracker/qubership-core-lib-go/v3/logging"
-	"github.com/netcracker/qubership-core-lib-go/v3/utils"
 	"github.com/netcracker/qubership-core-lib-go/v3/const"
-	"github.com/netcracker/qubership-core-lib-go/v3/serviceloader"
+	"github.com/netcracker/qubership-core-lib-go/v3/logging"
 	"github.com/netcracker/qubership-core-lib-go/v3/security"
+	"github.com/netcracker/qubership-core-lib-go/v3/serviceloader"
+	"github.com/netcracker/qubership-core-lib-go/v3/utils"
 )
 
 var log logging.Logger
@@ -50,7 +50,7 @@ func (client *ControlPlaneClient) getApiUrl(request RegistrationRequest) (string
 		return fmt.Sprintf("%s/api/v3/routes", client.controlPlaneAddr), nil
 	default:
 		errorMsg := fmt.Sprintf("control plane api version is not supported: %v", request.ApiVersion())
-		log.Error(errorMsg)
+		log.Errorf("%s", errorMsg)
 		return "", errors.New(errorMsg)
 	}
 }
@@ -58,11 +58,11 @@ func (client *ControlPlaneClient) getApiUrl(request RegistrationRequest) (string
 func (client *ControlPlaneClient) SendRequest(request RegistrationRequest) {
 	url, err := client.getApiUrl(request)
 	if err != nil {
-		log.Panic("Failed to resolve api version: " + err.Error())
+		log.Panicf("Failed to resolve api version: %+v", err)
 	}
 	payload, err := json.Marshal(request.Payload())
 	if err != nil {
-		log.Panic("Failed to marshall route registration request to JSON: " + err.Error())
+		log.Panicf("Failed to marshall route registration request to JSON: %+v", err)
 	}
 
 	client.sendRequestWithRetry(url, payload)
@@ -70,7 +70,7 @@ func (client *ControlPlaneClient) SendRequest(request RegistrationRequest) {
 
 func (client *ControlPlaneClient) sendRequestWithRetry(url string, payload []byte) {
 	client.retryManager.DoWithRetry(func() error {
-	    tokenProvider := serviceloader.MustLoad[security.TokenProvider]()
+		tokenProvider := serviceloader.MustLoad[security.TokenProvider]()
 		token, err := tokenProvider.GetToken(context.Background())
 		if err != nil {
 			log.Errorf("Go error %+v during receiving m2m token", err.Error())
@@ -82,7 +82,9 @@ func (client *ControlPlaneClient) sendRequestWithRetry(url string, payload []byt
 			return err
 		}
 		req.Header.Set("Content-Type", "application/json")
-		if token != "" { req.Header.Set("Authorization", "Bearer " + token) }
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
 		client := utils.GetClient()
 		resp, err := client.Do(req)
 		if err != nil {
@@ -112,7 +114,7 @@ func (rm *RetryManager) DoWithRetry(action func() error) {
 		}
 	}()
 	if err := action(); err != nil {
-		log.Panic("Action failed with error: " + err.Error())
+		log.Panicf("Action failed with error: %+v", err)
 	}
 	rm.progressiveTimeout.Reset()
 }

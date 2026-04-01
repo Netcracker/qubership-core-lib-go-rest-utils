@@ -128,7 +128,7 @@ func (r *ProviderImpl) Read(*koanf.Koanf) (map[string]interface{}, error) {
 	err := r.client.Login()
 	if err != nil {
 		if r.cfg.Failsafe {
-			logger.Errorf("error during login to Consul: %w", err)
+			logger.Errorf("error during login to Consul: %+v", err)
 			return make(map[string]interface{}), nil
 		} else {
 			return nil, err
