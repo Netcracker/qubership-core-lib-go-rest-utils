@@ -65,7 +65,7 @@ func defaultRegistrarConfig() *RegistrarConfig {
 			serviceMeshType = CoreServiceMeshType
 		default:
 			serviceMeshType = CoreServiceMeshType
-			log.Error("unknown serviceMeshType %q, defaulting to %s", serviceMeshTypeEnv, serviceMeshType)
+			log.Warn("unknown SERVICE_MESH_TYPE %q, defaulting to %s", serviceMeshTypeEnv, serviceMeshType)
 		}
 	}
 
