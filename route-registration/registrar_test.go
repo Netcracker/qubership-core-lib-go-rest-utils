@@ -1,10 +1,12 @@
 package routeregistration
 
 import (
+	"os"
 	"testing"
 
-	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
+	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/route-registration/internal/rest"
 	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/route-registration/internal/utils"
+	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -217,4 +219,213 @@ func createTestRoute(rType RouteType, gateway string, from string, to string) Ro
 func contains(routesMap utils.RoutesByGateway, key string) bool {
 	_, isFound := routesMap[key]
 	return isFound
+}
+
+func Test_registrar_Register(t *testing.T) {
+	defer os.Clearenv()
+	configloader.InitWithSourcesArray(configloader.BasePropertySources(params))
+
+	reg := NewRegistrar().(*registrar)
+	reg.requestSender = &TestRouteConsumerClient{}
+	reg.WithRoutes(createTestRoute(Public, "", pathFromV1, pathToV1))
+	reg.Register()
+	assert.True(t, reg.requestSender.(*TestRouteConsumerClient).SendRequestCalled)
+
+	os.Setenv("SERVICE_MESH_TYPE", "CORE")
+	reg = NewRegistrar().(*registrar)
+	reg.requestSender = &TestRouteConsumerClient{}
+	reg.WithRoutes(createTestRoute(Public, "", pathFromV1, pathToV1))
+	reg.Register()
+	assert.True(t, reg.requestSender.(*TestRouteConsumerClient).SendRequestCalled)
+
+	os.Setenv("SERVICE_MESH_TYPE", "ISTIO")
+	reg = NewRegistrar().(*registrar)
+	reg.requestSender = &TestRouteConsumerClient{}
+	reg.WithRoutes(createTestRoute(Public, "", pathFromV1, pathToV1))
+	reg.Register()
+	assert.False(t, reg.requestSender.(*TestRouteConsumerClient).SendRequestCalled)
+}
+
+func Test_registrar_Register_WithConfig(t *testing.T) {
+	defer os.Clearenv()
+	configloader.InitWithSourcesArray(configloader.BasePropertySources(params))
+
+	reg := NewRegistrarWithConfig(defaultRegistrarConfig()).(*registrar)
+	reg.requestSender = &TestRouteConsumerClient{}
+	reg.WithRoutes(createTestRoute(Public, "", pathFromV1, pathToV1))
+	reg.Register()
+	assert.True(t, reg.requestSender.(*TestRouteConsumerClient).SendRequestCalled)
+
+	reg = NewRegistrarWithConfig(&RegistrarConfig{ServiceMeshType: CoreServiceMeshType}).(*registrar)
+	reg.requestSender = &TestRouteConsumerClient{}
+	reg.WithRoutes(createTestRoute(Public, "", pathFromV1, pathToV1))
+	reg.Register()
+	assert.True(t, reg.requestSender.(*TestRouteConsumerClient).SendRequestCalled)
+
+	reg = NewRegistrarWithConfig(&RegistrarConfig{ServiceMeshType: IstioServiceMeshType}).(*registrar)
+	reg.requestSender = &TestRouteConsumerClient{}
+	reg.WithRoutes(createTestRoute(Public, "", pathFromV1, pathToV1))
+	reg.Register()
+	assert.False(t, reg.requestSender.(*TestRouteConsumerClient).SendRequestCalled)
+}
+
+func Test_defaultRegistrarConfig_NoEnv_DefaultsToCore(t *testing.T) {
+	defer os.Clearenv()
+
+	config := defaultRegistrarConfig()
+
+	assert.Equal(t, CoreServiceMeshType, config.ServiceMeshType)
+}
+
+func Test_defaultRegistrarConfig_IstioEnv(t *testing.T) {
+	defer os.Clearenv()
+	os.Setenv("SERVICE_MESH_TYPE", "ISTIO")
+
+	config := defaultRegistrarConfig()
+
+	assert.Equal(t, IstioServiceMeshType, config.ServiceMeshType)
+}
+
+func Test_defaultRegistrarConfig_CoreEnv(t *testing.T) {
+	defer os.Clearenv()
+	os.Setenv("SERVICE_MESH_TYPE", "CORE")
+
+	config := defaultRegistrarConfig()
+
+	assert.Equal(t, CoreServiceMeshType, config.ServiceMeshType)
+}
+
+func Test_defaultRegistrarConfig_UnknownEnv_DefaultsToCore(t *testing.T) {
+	defer os.Clearenv()
+	os.Setenv("SERVICE_MESH_TYPE", "SOMETHING_UNKNOWN")
+
+	config := defaultRegistrarConfig()
+
+	assert.Equal(t, CoreServiceMeshType, config.ServiceMeshType)
+}
+
+func Test_defaultRegistrarConfig_LowercaseIstio_TreatedAsIstio(t *testing.T) {
+	defer os.Clearenv()
+	os.Setenv("SERVICE_MESH_TYPE", "istio")
+
+	config := defaultRegistrarConfig()
+
+	assert.Equal(t, IstioServiceMeshType, config.ServiceMeshType)
+}
+
+func Test_defaultRegistrarConfig_MixedCaseCore_TreatedAsCore(t *testing.T) {
+	defer os.Clearenv()
+	os.Setenv("SERVICE_MESH_TYPE", "Core")
+
+	config := defaultRegistrarConfig()
+
+	assert.Equal(t, CoreServiceMeshType, config.ServiceMeshType)
+}
+
+func TestNewRegistrarWithConfig_ConfigIsApplied(t *testing.T) {
+	defer os.Clearenv()
+	configloader.InitWithSourcesArray(configloader.BasePropertySources(params))
+
+	// Even if env says CORE, explicit ISTIO config must win
+	os.Setenv("SERVICE_MESH_TYPE", "CORE")
+	reg := NewRegistrarWithConfig(&RegistrarConfig{ServiceMeshType: IstioServiceMeshType}).(*registrar)
+
+	assert.Equal(t, IstioServiceMeshType, reg.config.ServiceMeshType)
+}
+
+func TestNewRegistrarWithConfig_IstioConfig_SkipsRegistration(t *testing.T) {
+	defer os.Clearenv()
+	configloader.InitWithSourcesArray(configloader.BasePropertySources(params))
+
+	// Even if env says CORE, an explicit ISTIO config must suppress sending
+	os.Setenv("SERVICE_MESH_TYPE", "CORE")
+	reg := NewRegistrarWithConfig(&RegistrarConfig{ServiceMeshType: IstioServiceMeshType}).(*registrar)
+	reg.requestSender = &TestRouteConsumerClient{}
+	reg.WithRoutes(createTestRoute(Public, "", pathFromV1, pathToV1))
+	reg.Register()
+
+	assert.False(t, reg.requestSender.(*TestRouteConsumerClient).SendRequestCalled)
+}
+
+func TestWithRoutes_ForbiddenRoute_AllGatewaysDisallowed(t *testing.T) {
+	configloader.InitWithSourcesArray(configloader.BasePropertySources(params))
+	registrar := NewRegistrar().(*registrar)
+	testRoute := Route{
+		From:      pathFromV1,
+		To:        pathToV1,
+		Forbidden: true,
+		RouteType: Public,
+	}
+	registrar.WithRoutes(testRoute)
+	routesByGateway := registrar.routesByGatewayMap
+
+	assert.False(t, routesByGateway[PublicGatewayService][0].Allowed)
+	assert.False(t, routesByGateway[PrivateGatewayService][0].Allowed)
+	assert.False(t, routesByGateway[InternalGatewayService][0].Allowed)
+}
+
+func TestWithRoutes_ForbiddenMeshRoute_IsDisallowed(t *testing.T) {
+	configloader.InitWithSourcesArray(configloader.BasePropertySources(params))
+	reg := NewRegistrar().(*registrar)
+	testRoute := Route{
+		From:      pathFromV1,
+		To:        pathToV1,
+		Forbidden: true,
+		Gateway:   meshGateway,
+	}
+	reg.WithRoutes(testRoute)
+
+	meshRoutes := reg.routesByGatewayMap[meshGateway]
+	assert.False(t, meshRoutes[0].Allowed)
+}
+
+func TestWithRoutes_AccumulatesRoutesAcrossCalls(t *testing.T) {
+	configloader.InitWithSourcesArray(configloader.BasePropertySources(params))
+	reg := NewRegistrar().(*registrar)
+
+	reg.WithRoutes(createTestRoute(Public, "", pathFromV1, pathToV1))
+	reg.WithRoutes(createTestRoute(Public, "", "/v2", "/v2/test"))
+
+	assert.Equal(t, 2, len(reg.routesByGatewayMap[PublicGatewayService]))
+}
+
+func TestServiceMeshType_Constants(t *testing.T) {
+	assert.Equal(t, ServiceMeshType("CORE"), CoreServiceMeshType)
+	assert.Equal(t, ServiceMeshType("ISTIO"), IstioServiceMeshType)
+}
+
+func TestServiceMeshType_IsString(t *testing.T) {
+	var meshType ServiceMeshType = "CORE"
+	assert.Equal(t, "CORE", string(meshType))
+}
+
+func TestRegistrarConfig_CoreServiceMeshType(t *testing.T) {
+	config := &RegistrarConfig{ServiceMeshType: CoreServiceMeshType}
+	assert.Equal(t, CoreServiceMeshType, config.ServiceMeshType)
+}
+
+func TestRegistrarConfig_IstioServiceMeshType(t *testing.T) {
+	config := &RegistrarConfig{ServiceMeshType: IstioServiceMeshType}
+	assert.Equal(t, IstioServiceMeshType, config.ServiceMeshType)
+}
+
+func TestRegistrarConfig_CustomServiceMeshType(t *testing.T) {
+	customType := ServiceMeshType("CUSTOM")
+	config := &RegistrarConfig{ServiceMeshType: customType}
+	assert.Equal(t, ServiceMeshType("CUSTOM"), config.ServiceMeshType)
+}
+
+func TestRegistrarConfig_ZeroValue(t *testing.T) {
+	config := &RegistrarConfig{}
+	assert.Equal(t, ServiceMeshType(""), config.ServiceMeshType)
+	assert.NotEqual(t, CoreServiceMeshType, config.ServiceMeshType)
+	assert.NotEqual(t, IstioServiceMeshType, config.ServiceMeshType)
+}
+
+type TestRouteConsumerClient struct {
+	SendRequestCalled bool
+}
+
+func (t *TestRouteConsumerClient) SendRequest(_ rest.RegistrationRequest) {
+	t.SendRequestCalled = true
 }

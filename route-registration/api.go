@@ -1,6 +1,8 @@
 package routeregistration
 
 import (
+	"os"
+	"strings"
 	"time"
 )
 
@@ -45,5 +47,27 @@ type Registrar interface {
 }
 
 func NewRegistrar() Registrar {
-	return newRegistrar()
+	return newRegistrar(defaultRegistrarConfig())
+}
+
+func NewRegistrarWithConfig(config *RegistrarConfig) Registrar {
+	return newRegistrar(config)
+}
+
+func defaultRegistrarConfig() *RegistrarConfig {
+	serviceMeshType := CoreServiceMeshType
+
+	if serviceMeshTypeEnv, ok := os.LookupEnv("SERVICE_MESH_TYPE"); ok {
+		switch ServiceMeshType(strings.ToUpper(serviceMeshTypeEnv)) {
+		case IstioServiceMeshType:
+			serviceMeshType = IstioServiceMeshType
+		case CoreServiceMeshType:
+			serviceMeshType = CoreServiceMeshType
+		default:
+			serviceMeshType = CoreServiceMeshType
+			log.Warn("unknown SERVICE_MESH_TYPE %q, defaulting to %s", serviceMeshTypeEnv, serviceMeshType)
+		}
+	}
+
+	return &RegistrarConfig{ServiceMeshType: serviceMeshType}
 }
