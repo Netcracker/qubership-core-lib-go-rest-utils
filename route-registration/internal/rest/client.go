@@ -13,9 +13,7 @@ import (
 
 	"github.com/netcracker/qubership-core-lib-go/v3/const"
 	"github.com/netcracker/qubership-core-lib-go/v3/logging"
-	"github.com/netcracker/qubership-core-lib-go/v3/security"
-	"github.com/netcracker/qubership-core-lib-go/v3/serviceloader"
-	"github.com/netcracker/qubership-core-lib-go/v3/utils"
+	restclient "github.com/netcracker/qubership-core-lib-go/v3/security/rest"
 )
 
 var log logging.Logger
@@ -25,12 +23,16 @@ func init() {
 }
 
 type ControlPlaneClient struct {
+	ctx context.Context
+	cancel context.CancelFunc
 	controlPlaneAddr string
 	retryManager     *RetryManager
+	restClient       restclient.Client
 }
 
 func NewControlPlaneClient(controlPlaneAddr string, retryManager *RetryManager) *ControlPlaneClient {
-	return &ControlPlaneClient{controlPlaneAddr: formatAddr(controlPlaneAddr), retryManager: retryManager}
+	ctx, cancel := context.WithCancel(context.Background())
+	return &ControlPlaneClient{ctx: ctx, cancel: cancel, controlPlaneAddr: formatAddr(controlPlaneAddr), retryManager: retryManager, restClient: restclient.NewM2MRestClient()}
 }
 
 func formatAddr(addr string) string {
@@ -65,28 +67,14 @@ func (client *ControlPlaneClient) SendRequest(request RegistrationRequest) {
 		log.Panicf("Failed to marshall route registration request to JSON: %+v", err)
 	}
 
-	client.sendRequestWithRetry(url, payload)
+	client.sendRequestWithRetry(client.ctx, url, payload)
 }
 
-func (client *ControlPlaneClient) sendRequestWithRetry(url string, payload []byte) {
+func (client *ControlPlaneClient) sendRequestWithRetry(ctx context.Context, url string, payload []byte) {
 	client.retryManager.DoWithRetry(func() error {
-		tokenProvider := serviceloader.MustLoad[security.TokenProvider]()
-		token, err := tokenProvider.GetToken(context.Background())
-		if err != nil {
-			log.Errorf("Go error %+v during receiving m2m token", err.Error())
-			return err
-		}
-		req, err := http.NewRequest("POST", url, bytes.NewReader(payload))
-		if err != nil {
-			log.Errorf("Can not create request: %+v", err)
-			return err
-		}
-		req.Header.Set("Content-Type", "application/json")
-		if token != "" {
-			req.Header.Set("Authorization", "Bearer "+token)
-		}
-		client := utils.GetClient()
-		resp, err := client.Do(req)
+		resp, err := client.restClient.DoRequest(ctx, "POST", url, map[string][]string{
+			"Content-Type": []string{"application/json"},
+		}, bytes.NewReader(payload))
 		if err != nil {
 			return err
 		}
@@ -95,6 +83,10 @@ func (client *ControlPlaneClient) sendRequestWithRetry(url string, payload []byt
 		}
 		return nil
 	})
+}
+
+func (client *ControlPlaneClient) Close() {
+	client.cancel()
 }
 
 type RetryManager struct {

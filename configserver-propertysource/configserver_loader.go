@@ -6,26 +6,27 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 
 	"github.com/knadh/koanf/maps"
 	"github.com/knadh/koanf/v2"
 	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
 	constants "github.com/netcracker/qubership-core-lib-go/v3/const"
 	"github.com/netcracker/qubership-core-lib-go/v3/logging"
-	"github.com/netcracker/qubership-core-lib-go/v3/security"
-	"github.com/netcracker/qubership-core-lib-go/v3/serviceloader"
-	"github.com/netcracker/qubership-core-lib-go/v3/utils"
+	"github.com/netcracker/qubership-core-lib-go/v3/security/rest"
 )
 
 var logger = logging.GetLogger("config-server-loader")
 
 type configServerLoader struct {
+	ctx context.Context
+	cancel context.CancelFunc
+	client rest.Client
 	propertySourceConfiguration *PropertySourceConfiguration
 }
 
 func newConfigServerLoader(params *PropertySourceConfiguration) *configServerLoader {
-	return &configServerLoader{params}
+	ctx, cancel := context.WithCancel(context.Background())
+	return &configServerLoader{ctx, cancel, rest.NewM2MRestClient(), params}
 }
 
 func (this *configServerLoader) ReadBytes(*koanf.Koanf) ([]byte, error) {
@@ -33,7 +34,7 @@ func (this *configServerLoader) ReadBytes(*koanf.Koanf) ([]byte, error) {
 }
 
 func (this *configServerLoader) Read(*koanf.Koanf) (map[string]interface{}, error) {
-	source, err := getConfigServerProperties(this.propertySourceConfiguration)
+	source, err := this.getConfigServerProperties(this.ctx, this.propertySourceConfiguration)
 	if err != nil {
 		return nil, err
 	}
@@ -41,26 +42,19 @@ func (this *configServerLoader) Read(*koanf.Koanf) (map[string]interface{}, erro
 	return flattenMap, nil
 }
 
-func getConfigServerProperties(params *PropertySourceConfiguration) (map[string]interface{}, error) {
+func (this *configServerLoader) getConfigServerProperties(ctx context.Context, params *PropertySourceConfiguration) (map[string]interface{}, error) {
 	microserviceName, configServerUrl := getMicroserviceNameAndURL(params)
-	tokenProvider := serviceloader.MustLoad[security.TokenProvider]()
-	token, err := tokenProvider.GetToken(context.Background())
-	if err != nil {
-		err = fmt.Errorf("could not get token to load properties from config-server, err: %w", err)
-		return nil, err
-	}
-	client := utils.GetClient()
-	req, _ := http.NewRequest("GET", fmt.Sprintf("%s/%s/default", configServerUrl, microserviceName), nil)
-	if token != "" {
-		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
-	}
-	res, err := client.Do(req)
+	res, err := this.client.DoRequest(ctx, "GET", fmt.Sprintf("%s/%s/default", configServerUrl, microserviceName), map[string][]string{}, nil)
 	if err != nil {
 		logger.Error("Failed send request to config-server: %s", err)
 		return nil, err
 	}
 	defer res.Body.Close()
 	return parseBody(res.Body)
+}
+
+func (this *configServerLoader) Close() {
+	this.cancel()
 }
 
 func parseBody(body io.Reader) (map[string]interface{}, error) {
