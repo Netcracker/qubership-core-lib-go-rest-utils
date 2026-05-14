@@ -153,6 +153,8 @@ github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRW
 github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/netcracker/qubership-core-lib-go/v3 v3.8.1-0.20260428233515-5795851eb5ed h1:s1jQ9Agmpi2wtfTXf4JMQKrHDd3sIeWOvI5ZLZWSzC4=
 github.com/netcracker/qubership-core-lib-go/v3 v3.8.1-0.20260428233515-5795851eb5ed/go.mod h1:QyMRsp91YS6ub+0NWXWU5NzC0DK+YASMceUR4Qhdxts=
+github.com/netcracker/qubership-core-lib-go/v3 v3.8.2-0.20260514133633-d05f0c13170b h1:YTQuKWzE8DF+hgVjOsa9KNB5yKZa1MYlB9qDETeIUOU=
+github.com/netcracker/qubership-core-lib-go/v3 v3.8.2-0.20260514133633-d05f0c13170b/go.mod h1:QyMRsp91YS6ub+0NWXWU5NzC0DK+YASMceUR4Qhdxts=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e h1:fD57ERR4JtEqsWbfPhv4DMiApHyliiK5xCTNVSPiaAs=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
 github.com/pascaldekloe/goe v0.1.0 h1:cBOtyMzM9HTpWjXfbbunk26uA6nG3a8n06Wieeh0MwY=
