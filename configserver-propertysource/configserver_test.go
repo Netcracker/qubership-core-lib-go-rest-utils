@@ -74,6 +74,7 @@ func TestConfigServerLoader_ReadBytes(t *testing.T) {
 		MicroserviceName: "name",
 		ConfigServerUrl:  "url",
 	})
+	defer loader.Close()
 	if _, err := loader.ReadBytes(nil); assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "configserver provider does not support this method")
 	}
