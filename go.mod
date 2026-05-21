@@ -7,7 +7,11 @@ require (
 	github.com/hashicorp/consul/api v1.34.2
 	github.com/knadh/koanf/maps v0.1.2
 	github.com/knadh/koanf/v2 v2.3.4
+<<<<<<< HEAD
 	github.com/netcracker/qubership-core-lib-go/v3 v3.10.0
+=======
+	github.com/netcracker/qubership-core-lib-go/v3 v3.8.2-0.20260514133633-d05f0c13170b
+>>>>>>> abf3835 (feat: m2m rest client (#75))
 	github.com/stretchr/testify v1.11.1
 )
 
@@ -16,6 +20,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
+	github.com/go-pkgz/expirable-cache/v3 v3.1.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect

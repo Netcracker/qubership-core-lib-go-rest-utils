@@ -6,26 +6,25 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 
 	"github.com/knadh/koanf/maps"
 	"github.com/knadh/koanf/v2"
 	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
 	constants "github.com/netcracker/qubership-core-lib-go/v3/const"
 	"github.com/netcracker/qubership-core-lib-go/v3/logging"
-	"github.com/netcracker/qubership-core-lib-go/v3/security"
-	"github.com/netcracker/qubership-core-lib-go/v3/serviceloader"
-	"github.com/netcracker/qubership-core-lib-go/v3/utils"
+	"github.com/netcracker/qubership-core-lib-go/v3/security/rest"
 )
 
 var logger = logging.GetLogger("config-server-loader")
 
 type configServerLoader struct {
+	ctx                         context.Context
+	client                      rest.Client
 	propertySourceConfiguration *PropertySourceConfiguration
 }
 
-func newConfigServerLoader(params *PropertySourceConfiguration) *configServerLoader {
-	return &configServerLoader{params}
+func newConfigServerLoader(ctx context.Context, params *PropertySourceConfiguration) *configServerLoader {
+	return &configServerLoader{ctx, rest.NewM2MRestClient(), params}
 }
 
 func (this *configServerLoader) ReadBytes(*koanf.Koanf) ([]byte, error) {
@@ -33,7 +32,7 @@ func (this *configServerLoader) ReadBytes(*koanf.Koanf) ([]byte, error) {
 }
 
 func (this *configServerLoader) Read(*koanf.Koanf) (map[string]interface{}, error) {
-	source, err := getConfigServerProperties(this.propertySourceConfiguration)
+	source, err := this.getConfigServerProperties()
 	if err != nil {
 		return nil, err
 	}
@@ -41,20 +40,9 @@ func (this *configServerLoader) Read(*koanf.Koanf) (map[string]interface{}, erro
 	return flattenMap, nil
 }
 
-func getConfigServerProperties(params *PropertySourceConfiguration) (map[string]interface{}, error) {
-	microserviceName, configServerUrl := getMicroserviceNameAndURL(params)
-	tokenProvider := serviceloader.MustLoad[security.TokenProvider]()
-	token, err := tokenProvider.GetToken(context.Background())
-	if err != nil {
-		err = fmt.Errorf("could not get token to load properties from config-server, err: %w", err)
-		return nil, err
-	}
-	client := utils.GetClient()
-	req, _ := http.NewRequest("GET", fmt.Sprintf("%s/%s/default", configServerUrl, microserviceName), nil)
-	if token != "" {
-		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
-	}
-	res, err := client.Do(req)
+func (this *configServerLoader) getConfigServerProperties() (map[string]interface{}, error) {
+	microserviceName, configServerUrl := getMicroserviceNameAndURL(this.propertySourceConfiguration)
+	res, err := this.client.DoRequest(this.ctx, "GET", fmt.Sprintf("%s/%s/default", configServerUrl, microserviceName), map[string][]string{}, nil)
 	if err != nil {
 		logger.Error("Failed send request to config-server: %s", err)
 		return nil, err

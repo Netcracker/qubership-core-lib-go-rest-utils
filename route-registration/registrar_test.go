@@ -7,8 +7,14 @@ import (
 	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/route-registration/internal/rest"
 	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/route-registration/internal/utils"
 	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
+	"github.com/netcracker/qubership-core-lib-go/v3/serviceloader"
+	"github.com/netcracker/qubership-core-lib-go/v3/security"
 	"github.com/stretchr/testify/assert"
 )
+
+func init () {
+	serviceloader.Register(2, &security.DummyToken{})
+}
 
 const (
 	meshGateway = "test-gateway"

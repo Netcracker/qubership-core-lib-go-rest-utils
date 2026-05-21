@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
-	"github.com/netcracker/qubership-core-lib-go/v3/serviceloader"
 	"github.com/netcracker/qubership-core-lib-go/v3/security"
+	"github.com/netcracker/qubership-core-lib-go/v3/serviceloader"
 	"github.com/netcracker/qubership-core-lib-go/v3/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -21,8 +21,9 @@ const (
 	configserverValue = "value"
 )
 
-func init () {
+func init() {
 	serviceloader.Register(2, &security.DummyToken{})
+	configloader.Init()
 }
 
 func TestConfigServerPropertySource_WithoutMandatoryProperties(t *testing.T) {
@@ -69,7 +70,7 @@ func TestGetPropertySource_WithoutParams(t *testing.T) {
 }
 
 func TestConfigServerLoader_ReadBytes(t *testing.T) {
-	loader := newConfigServerLoader(&PropertySourceConfiguration{
+	loader := newConfigServerLoader(t.Context(), &PropertySourceConfiguration{
 		MicroserviceName: "name",
 		ConfigServerUrl:  "url",
 	})
@@ -82,7 +83,7 @@ func TestConfigServerLoader_Read(t *testing.T) {
 	ts := createTestHttpServer()
 	defer ts.Close()
 	configloader.InitWithSourcesArray([]*configloader.PropertySource{configloader.EnvPropertySource()})
-	loader := newConfigServerLoader(&PropertySourceConfiguration{
+	loader := newConfigServerLoader(t.Context(), &PropertySourceConfiguration{
 		MicroserviceName: "name",
 		ConfigServerUrl:  ts.URL,
 	})

@@ -8,13 +8,14 @@ import (
 	"time"
 
 	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
-	"github.com/netcracker/qubership-core-lib-go/v3/serviceloader"
 	"github.com/netcracker/qubership-core-lib-go/v3/security"
+	"github.com/netcracker/qubership-core-lib-go/v3/serviceloader"
 	"github.com/stretchr/testify/assert"
 )
 
-func init () {
+func init() {
 	serviceloader.Register(2, &security.DummyToken{})
+	configloader.Init()
 }
 
 func TestNewProgressiveTimeout(t *testing.T) {
@@ -70,7 +71,7 @@ func TestControlPlaneClient_SendRequest(t *testing.T) {
 		handle: successfulResponse,
 	})
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	mockHandlers[0].handle(w, r)
+		mockHandlers[0].handle(w, r)
 
 	}))
 	defer func() {
