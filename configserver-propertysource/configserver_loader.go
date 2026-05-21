@@ -19,14 +19,12 @@ var logger = logging.GetLogger("config-server-loader")
 
 type configServerLoader struct {
 	ctx                         context.Context
-	cancel                      context.CancelFunc
 	client                      rest.Client
 	propertySourceConfiguration *PropertySourceConfiguration
 }
 
-func newConfigServerLoader(params *PropertySourceConfiguration) *configServerLoader {
-	ctx, cancel := context.WithCancel(context.Background())
-	return &configServerLoader{ctx, cancel, rest.NewM2MRestClient(), params}
+func newConfigServerLoader(ctx context.Context, params *PropertySourceConfiguration) *configServerLoader {
+	return &configServerLoader{ctx, rest.NewM2MRestClient(), params}
 }
 
 func (this *configServerLoader) ReadBytes(*koanf.Koanf) ([]byte, error) {
@@ -51,10 +49,6 @@ func (this *configServerLoader) getConfigServerProperties() (map[string]interfac
 	}
 	defer res.Body.Close()
 	return parseBody(res.Body)
-}
-
-func (this *configServerLoader) Close() {
-	this.cancel()
 }
 
 func parseBody(body io.Reader) (map[string]interface{}, error) {

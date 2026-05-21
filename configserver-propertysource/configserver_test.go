@@ -70,11 +70,10 @@ func TestGetPropertySource_WithoutParams(t *testing.T) {
 }
 
 func TestConfigServerLoader_ReadBytes(t *testing.T) {
-	loader := newConfigServerLoader(&PropertySourceConfiguration{
+	loader := newConfigServerLoader(t.Context(), &PropertySourceConfiguration{
 		MicroserviceName: "name",
 		ConfigServerUrl:  "url",
 	})
-	defer loader.Close()
 	if _, err := loader.ReadBytes(nil); assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "configserver provider does not support this method")
 	}
@@ -84,7 +83,7 @@ func TestConfigServerLoader_Read(t *testing.T) {
 	ts := createTestHttpServer()
 	defer ts.Close()
 	configloader.InitWithSourcesArray([]*configloader.PropertySource{configloader.EnvPropertySource()})
-	loader := newConfigServerLoader(&PropertySourceConfiguration{
+	loader := newConfigServerLoader(t.Context(), &PropertySourceConfiguration{
 		MicroserviceName: "name",
 		ConfigServerUrl:  ts.URL,
 	})
