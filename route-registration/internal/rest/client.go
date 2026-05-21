@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/netcracker/qubership-core-lib-go/v3/const"
+	constants "github.com/netcracker/qubership-core-lib-go/v3/const"
 	"github.com/netcracker/qubership-core-lib-go/v3/logging"
 	restclient "github.com/netcracker/qubership-core-lib-go/v3/security/rest"
 )
@@ -23,8 +23,8 @@ func init() {
 }
 
 type ControlPlaneClient struct {
-	ctx context.Context
-	cancel context.CancelFunc
+	ctx              context.Context
+	cancel           context.CancelFunc
 	controlPlaneAddr string
 	retryManager     *RetryManager
 	restClient       restclient.Client
@@ -67,13 +67,13 @@ func (client *ControlPlaneClient) SendRequest(request RegistrationRequest) {
 		log.Panicf("Failed to marshall route registration request to JSON: %+v", err)
 	}
 
-	client.sendRequestWithRetry(client.ctx, url, payload)
+	client.sendRequestWithRetry(url, payload)
 }
 
-func (client *ControlPlaneClient) sendRequestWithRetry(ctx context.Context, url string, payload []byte) {
+func (client *ControlPlaneClient) sendRequestWithRetry(url string, payload []byte) {
 	client.retryManager.DoWithRetry(func() error {
-		resp, err := client.restClient.DoRequest(ctx, "POST", url, map[string][]string{
-			"Content-Type": []string{"application/json"},
+		resp, err := client.restClient.DoRequest(client.ctx, "POST", url, map[string][]string{
+			"Content-Type": {"application/json"},
 		}, bytes.NewReader(payload))
 		if err != nil {
 			return err

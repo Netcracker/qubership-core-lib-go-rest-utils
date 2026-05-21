@@ -18,9 +18,9 @@ import (
 var logger = logging.GetLogger("config-server-loader")
 
 type configServerLoader struct {
-	ctx context.Context
-	cancel context.CancelFunc
-	client rest.Client
+	ctx                         context.Context
+	cancel                      context.CancelFunc
+	client                      rest.Client
 	propertySourceConfiguration *PropertySourceConfiguration
 }
 
@@ -34,7 +34,7 @@ func (this *configServerLoader) ReadBytes(*koanf.Koanf) ([]byte, error) {
 }
 
 func (this *configServerLoader) Read(*koanf.Koanf) (map[string]interface{}, error) {
-	source, err := this.getConfigServerProperties(this.ctx, this.propertySourceConfiguration)
+	source, err := this.getConfigServerProperties()
 	if err != nil {
 		return nil, err
 	}
@@ -42,9 +42,9 @@ func (this *configServerLoader) Read(*koanf.Koanf) (map[string]interface{}, erro
 	return flattenMap, nil
 }
 
-func (this *configServerLoader) getConfigServerProperties(ctx context.Context, params *PropertySourceConfiguration) (map[string]interface{}, error) {
-	microserviceName, configServerUrl := getMicroserviceNameAndURL(params)
-	res, err := this.client.DoRequest(ctx, "GET", fmt.Sprintf("%s/%s/default", configServerUrl, microserviceName), map[string][]string{}, nil)
+func (this *configServerLoader) getConfigServerProperties() (map[string]interface{}, error) {
+	microserviceName, configServerUrl := getMicroserviceNameAndURL(this.propertySourceConfiguration)
+	res, err := this.client.DoRequest(this.ctx, "GET", fmt.Sprintf("%s/%s/default", configServerUrl, microserviceName), map[string][]string{}, nil)
 	if err != nil {
 		logger.Error("Failed send request to config-server: %s", err)
 		return nil, err
