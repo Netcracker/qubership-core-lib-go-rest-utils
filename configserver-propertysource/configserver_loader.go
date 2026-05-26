@@ -19,7 +19,7 @@ var logger = logging.GetLogger("config-server-loader")
 
 type configServerLoader struct {
 	ctx                         context.Context
-	client                      rest.Client
+	client                      *rest.M2MRestClient
 	propertySourceConfiguration *PropertySourceConfiguration
 }
 

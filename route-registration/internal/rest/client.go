@@ -27,7 +27,7 @@ type ControlPlaneClient struct {
 	cancel           context.CancelFunc
 	controlPlaneAddr string
 	retryManager     *RetryManager
-	restClient       restclient.Client
+	restClient       *restclient.M2MRestClient
 }
 
 func NewControlPlaneClient(controlPlaneAddr string, retryManager *RetryManager) *ControlPlaneClient {
