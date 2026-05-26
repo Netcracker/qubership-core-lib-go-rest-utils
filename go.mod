@@ -7,15 +7,7 @@ require (
 	github.com/hashicorp/consul/api v1.34.2
 	github.com/knadh/koanf/maps v0.1.2
 	github.com/knadh/koanf/v2 v2.3.4
-<<<<<<< HEAD
-<<<<<<< HEAD
-	github.com/netcracker/qubership-core-lib-go/v3 v3.10.0
-=======
-	github.com/netcracker/qubership-core-lib-go/v3 v3.8.2-0.20260514133633-d05f0c13170b
->>>>>>> abf3835 (feat: m2m rest client (#75))
-=======
-	github.com/netcracker/qubership-core-lib-go/v3 v3.9.2-0.20260526065219-914c71c88e88
->>>>>>> 0eabc05 (chore: refactoring)
+	github.com/netcracker/qubership-core-lib-go/v3 v3.10.1-0.20260528143816-818ca60ac93f
 	github.com/stretchr/testify v1.11.1
 )
 
