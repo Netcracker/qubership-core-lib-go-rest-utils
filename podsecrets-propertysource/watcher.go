@@ -41,21 +41,15 @@ func (w *Watcher) loop(dir string) {
 	}
 	defer debounce.Stop()
 
-	pendingRefresh := false
 	for {
 		select {
 		case _, ok := <-w.watcher.Events:
 			if !ok {
 				return
 			}
-			pendingRefresh = true
 			debounce.Reset(debounceInterval)
 
 		case <-debounce.C:
-			if !pendingRefresh {
-				continue
-			}
-			pendingRefresh = false
 			if err := configloader.Refresh(); err != nil {
 				logger.Warn("Pod-secrets refresh after change in %s failed: %s", dir, err.Error())
 			} else {

@@ -84,6 +84,13 @@ func TestPropertySource_RefreshPicksUpRotatedSecret(t *testing.T) {
 	assert.Equal(t, "rotated-password", configloader.GetOrDefaultString("db.password", ""))
 }
 
+func TestStartWatcher_MissingDirectory_ReturnsError(t *testing.T) {
+	t.Setenv(EnvSecretsDir, filepath.Join(t.TempDir(), "does-not-exist"))
+
+	_, err := StartWatcher()
+	assert.Error(t, err)
+}
+
 func TestStartWatcher_RefreshesOnSecretChange(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "db_password"), []byte("initial-password"), 0o600))
