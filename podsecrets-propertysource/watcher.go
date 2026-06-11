@@ -35,10 +35,8 @@ func StartWatcher() (*Watcher, error) {
 }
 
 func (w *Watcher) loop(dir string) {
-	debounce := time.NewTimer(0)
-	if !debounce.Stop() {
-		<-debounce.C
-	}
+	debounce := time.NewTimer(debounceInterval)
+	debounce.Stop()
 	defer debounce.Stop()
 
 	for {

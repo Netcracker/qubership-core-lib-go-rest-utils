@@ -13,6 +13,11 @@ import (
 
 const testdataSecretsDir = "./testdata/secrets"
 
+func TestResolveDir_DefaultsWhenEnvEmpty(t *testing.T) {
+	t.Setenv(EnvSecretsDir, "")
+	assert.Equal(t, DefaultSecretsDir, resolveDir())
+}
+
 func TestNormaliseKey(t *testing.T) {
 	assert.Equal(t, "db.password", normaliseKey("db_password"))
 	assert.Equal(t, "api.token", normaliseKey("API_TOKEN"))
@@ -35,6 +40,18 @@ func TestProvider_Read_MissingDirectory_ReturnsEmptyMapNoError(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, values)
 }
+
+func TestProvider_Read_DirIsFile_ReturnsEmptyMapNoError(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "not-a-dir")
+	require.NoError(t, os.WriteFile(file, []byte("x"), 0o600))
+
+	p := &provider{dir: file}
+	values, err := p.Read(nil)
+	require.NoError(t, err)
+	assert.Empty(t, values)
+}
+
 
 func TestProvider_ReadBytes_NotSupported(t *testing.T) {
 	p := &provider{dir: testdataSecretsDir}
