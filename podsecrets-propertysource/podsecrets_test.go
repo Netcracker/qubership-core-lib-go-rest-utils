@@ -70,10 +70,8 @@ func TestReadSecretFile_StripsTrailingNewline(t *testing.T) {
 }
 
 func TestPropertySource_OverridesEnv(t *testing.T) {
-	os.Setenv("DB_PASSWORD", "env-password")
-	defer os.Unsetenv("DB_PASSWORD")
-	os.Setenv("DB_HOST", "env-host")
-	defer os.Unsetenv("DB_HOST")
+	t.Setenv("DB_PASSWORD", "env-password")
+	t.Setenv("DB_HOST", "env-host")
 
 	t.Setenv(EnvSecretsDir, testdataSecretsDir)
 

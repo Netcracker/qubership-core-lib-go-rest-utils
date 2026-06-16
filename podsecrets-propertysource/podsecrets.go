@@ -39,7 +39,7 @@ func (p *provider) Read(*koanf.Koanf) (map[string]any, error) {
 		if errors.Is(err, fs.ErrNotExist) {
 			logger.Debug("Pod-secrets directory does not exist: %s", p.dir)
 		} else {
-			logger.Debug("Cannot list pod-secrets directory %s: %s", p.dir, err.Error())
+			logger.Warn("Cannot list pod-secrets directory %s: %s", p.dir, err.Error())
 		}
 		return map[string]any{}, nil
 	}
@@ -47,7 +47,7 @@ func (p *provider) Read(*koanf.Koanf) (map[string]any, error) {
 	result := make(map[string]any, len(entries))
 	keyNames := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		if entry.IsDir() {
+		if entry.IsDir() || strings.HasPrefix(entry.Name(), "..") {
 			continue
 		}
 

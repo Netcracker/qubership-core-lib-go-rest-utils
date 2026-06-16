@@ -19,7 +19,7 @@ List of all released versions may be found [here](https://github.com/netcracker/
 
 ## Usage
 
-Add the pod-secrets source to your property source list. It should go **last**, so that mounted secrets override values from environment variables and config-server/Consul:
+Add the pod-secrets source to your property source list. It should go **after environment variables but before config-server/Consul**, so that mounted secrets override env vars while Consul/config-server can still take precedence:
 
 ```go
 import (
@@ -34,17 +34,15 @@ func init() {
 }
 ```
 
-If you also use config-server or Consul, add them first and pod-secrets last:
+If you also use config-server or Consul, add pod-secrets **before** them so Consul takes the highest priority (Consul > pod-secrets > env vars):
 
 ```go
 sources := configloader.BasePropertySources()
-sources = configserver.AddConfigServerPropertySource(sources)
 sources = podsecrets.AddPodSecretsPropertySource(sources)
+sources = configserver.AddConfigServerPropertySource(sources)
 
 configloader.InitWithSourcesArray(sources)
 ```
-
-This way values mounted from a Kubernetes Secret always take precedence.
 
 ## Configuration
 
