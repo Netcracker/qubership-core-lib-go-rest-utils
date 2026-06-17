@@ -15,4 +15,5 @@ Restutils contains some extra utils for convenient work with go.
 |route-registration | allows registering routes in control-plane| [Readme](route-registration/README.md)|
 | configserver-propertysource | provides configserver property source | [Readme](configserver-propertysource/README.md)
 | consul-propertysource | provides Consul property source | [Readme](consul-propertysource/README.md)
+| podsecrets-propertysource | provides pod-secrets property source | [Readme](podsecrets-propertysource/README.md)
 

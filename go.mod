@@ -4,6 +4,7 @@ go 1.26.4
 
 require (
 	github.com/avast/retry-go/v4 v4.7.0
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/hashicorp/consul/api v1.34.3
 	github.com/knadh/koanf/maps v0.1.2
 	github.com/knadh/koanf/v2 v2.3.5
@@ -15,7 +16,6 @@ require (
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/fatih/color v1.18.0 // indirect
-	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/go-pkgz/expirable-cache/v3 v3.1.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
