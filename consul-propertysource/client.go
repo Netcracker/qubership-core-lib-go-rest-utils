@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	consulApi "github.com/hashicorp/consul/api"
+	consulApi "github.com/hashicorp/consul/api/v2"
 	"github.com/netcracker/qubership-core-lib-go/v3/logging"
 	"github.com/netcracker/qubership-core-lib-go/v3/security"
 	"github.com/netcracker/qubership-core-lib-go/v3/serviceloader"
