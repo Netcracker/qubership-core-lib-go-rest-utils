@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/avast/retry-go/v4"
+	"github.com/avast/retry-go/v5"
 	consulApi "github.com/hashicorp/consul/api"
 	"github.com/netcracker/qubership-core-lib-go/v3/logging"
 	"github.com/netcracker/qubership-core-lib-go/v3/security"
@@ -203,7 +203,13 @@ func (r *Client) subscribeFor(path string, keyIndex uint64, cb func(event interf
 	currentIndex := keyIndex
 	go func() {
 		for {
-			err := retry.Do(
+			err := retry.New(
+				retry.Context(r.cfg.Ctx),
+				retry.Delay(5*time.Second),
+				retry.MaxDelay(5*time.Minute),
+				retry.DelayType(retry.BackOffDelay),
+				retry.UntilSucceeded(),
+			).Do(
 				func() error {
 					err := r.Login()
 					if err != nil {
@@ -229,11 +235,6 @@ func (r *Client) subscribeFor(path string, keyIndex uint64, cb func(event interf
 					}
 					return nil
 				},
-				retry.Context(r.cfg.Ctx),
-				retry.Delay(5*time.Second),
-				retry.MaxDelay(5*time.Minute),
-				retry.DelayType(retry.BackOffDelay),
-				retry.UntilSucceeded(),
 			)
 			if err != nil {
 				logger.ErrorC(r.cfg.Ctx, "Stopped subscription: %v", err.Error())
