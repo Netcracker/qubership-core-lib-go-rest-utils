@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/avast/retry-go/v4"
+	"github.com/avast/retry-go/v5"
 	consulApi "github.com/hashicorp/consul/api"
 	"github.com/knadh/koanf/maps"
 	"github.com/knadh/koanf/v2"
@@ -266,7 +266,12 @@ func WatchForProperties(consulPropertySource *configloader.PropertySource, proje
 
 func StartWatchingForPropertiesWithRetry(ctx context.Context, consulPropertySource *configloader.PropertySource, projectFunc func(event interface{}, err error)) {
 	go func() {
-		err := retry.Do(
+		err := retry.New(
+			retry.Context(ctx),
+			retry.Delay(5*time.Second), retry.MaxDelay(5*time.Minute),
+			retry.DelayType(retry.BackOffDelay),
+			retry.UntilSucceeded(),
+		).Do(
 			func() error {
 				if err := WatchForProperties(consulPropertySource, projectFunc); err != nil {
 					logger.ErrorC(ctx, "cannot start watching property: %v", err.Error())
@@ -274,10 +279,6 @@ func StartWatchingForPropertiesWithRetry(ctx context.Context, consulPropertySour
 				}
 				return nil
 			},
-			retry.Context(ctx),
-			retry.Delay(5*time.Second), retry.MaxDelay(5*time.Minute),
-			retry.DelayType(retry.BackOffDelay),
-			retry.UntilSucceeded(),
 		)
 
 		if err != nil {
