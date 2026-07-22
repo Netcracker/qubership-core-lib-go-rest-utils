@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 
 	"github.com/knadh/koanf/v2"
 	"github.com/netcracker/qubership-core-lib-go/v3/logging"
@@ -26,7 +27,8 @@ func resolveDir() string {
 }
 
 type provider struct {
-	dir string
+	dir       string
+	lastKnown atomic.Value
 }
 
 func (p *provider) ReadBytes(*koanf.Koanf) ([]byte, error) {
@@ -34,38 +36,56 @@ func (p *provider) ReadBytes(*koanf.Koanf) ([]byte, error) {
 }
 
 func (p *provider) Read(*koanf.Koanf) (map[string]any, error) {
+	snapshot, _ := p.lastKnown.Load().(map[string]any)
+
 	entries, err := os.ReadDir(p.dir)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			logger.Debug("Pod-secrets directory does not exist: %s", p.dir)
-		} else {
-			logger.Warn("Cannot list pod-secrets directory %s: %s", p.dir, err.Error())
+			return map[string]any{}, nil
 		}
-		return map[string]any{}, nil
+		logger.Warn("Cannot list pod-secrets directory %s: %s", p.dir, err.Error())
+		return snapshot, nil
 	}
 
 	result := make(map[string]any, len(entries))
 	keyNames := make([]string, 0, len(entries))
+
 	for _, entry := range entries {
-		if entry.IsDir() || strings.HasPrefix(entry.Name(), "..") {
-			continue
-		}
+		key := normaliseKey(entry.Name())
+		path := filepath.Join(p.dir, entry.Name())
 
-		value, err := readSecretFile(filepath.Join(p.dir, entry.Name()))
+		info, err := os.Stat(path)
 		if err != nil {
-			logger.Debug("Cannot read pod-secret file %s: %s", entry.Name(), err.Error())
+			logger.Warn("Cannot stat pod-secret file %s: %s", entry.Name(), err.Error())
+			useStored(snapshot, key, result)
+			continue
+		}
+		if info.IsDir() {
 			continue
 		}
 
-		result[normaliseKey(entry.Name())] = value
+		value, err := readSecretFile(path)
+		if err != nil {
+			logger.Warn("Cannot read pod-secret file %s: %s", entry.Name(), err.Error())
+			useStored(snapshot, key, result)
+			continue
+		}
+
+		result[key] = value
 		keyNames = append(keyNames, entry.Name())
 	}
 
-	logger.Info("Pod-secrets loaded %d key(s) from %s", len(result), p.dir)
-	if len(keyNames) > 0 {
-		logger.Debug("Pod-secrets key names: %v (dir=%s)", keyNames, p.dir)
-	}
+	logger.Debug("Pod-secrets key names: %v (dir=%s)", keyNames, p.dir)
+	p.lastKnown.Store(result)
+
 	return result, nil
+}
+
+func useStored(snapshot map[string]any, key string, result map[string]any) {
+	if prev, ok := snapshot[key]; ok {
+		result[key] = prev
+	}
 }
 
 func normaliseKey(fileName string) string {
@@ -77,7 +97,5 @@ func readSecretFile(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	value := strings.TrimSuffix(string(data), "\n")
-	value = strings.TrimSuffix(value, "\r")
-	return value, nil
+	return string(data), nil
 }
