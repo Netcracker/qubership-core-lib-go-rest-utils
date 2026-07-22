@@ -3,9 +3,9 @@ module github.com/netcracker/qubership-core-lib-go-rest-utils/v2
 go 1.26.5
 
 require (
-	github.com/avast/retry-go/v4 v4.7.0
+	github.com/avast/retry-go/v5 v5.0.0
 	github.com/fsnotify/fsnotify v1.10.1
-	github.com/hashicorp/consul/api v1.34.4
+	github.com/hashicorp/consul/api/v2 v2.0.0
 	github.com/knadh/koanf/maps v0.1.2
 	github.com/knadh/koanf/v2 v2.3.5
 	github.com/netcracker/qubership-core-lib-go/v3 v3.13.1
@@ -26,6 +26,7 @@ require (
 	github.com/hashicorp/go-metrics v0.6.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
+	github.com/hashicorp/go-version v1.9.0 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
 	github.com/hashicorp/serf v0.10.4 // indirect
 	github.com/knadh/koanf/parsers/yaml v1.1.0 // indirect
