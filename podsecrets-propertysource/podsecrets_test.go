@@ -59,14 +59,14 @@ func TestProvider_ReadBytes_NotSupported(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestReadSecretFile_StripsTrailingNewline(t *testing.T) {
+func TestReadSecretFile_PreservesContent(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "secret")
 	require.NoError(t, os.WriteFile(path, []byte("plain-value\n"), 0o600))
 
 	value, err := readSecretFile(path)
 	require.NoError(t, err)
-	assert.Equal(t, "plain-value", value)
+	assert.Equal(t, "plain-value\n", value)
 }
 
 func TestPropertySource_OverridesEnv(t *testing.T) {
@@ -97,6 +97,26 @@ func TestPropertySource_RefreshPicksUpRotatedSecret(t *testing.T) {
 	require.NoError(t, configloader.Refresh())
 
 	assert.Equal(t, "rotated-password", configloader.GetOrDefaultString("db.password", ""))
+}
+
+func TestPropertySource_StoredValueOnFileReadError(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "db_password"), []byte("secret-pass"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "api_token"), []byte("secret-token"), 0o600))
+	t.Setenv(EnvSecretsDir, dir)
+
+	configloader.InitWithSourcesArray([]*configloader.PropertySource{NewPropertySource()})
+	assert.Equal(t, "secret-pass", configloader.GetOrDefaultString("db.password", ""))
+	assert.Equal(t, "secret-token", configloader.GetOrDefaultString("api.token", ""))
+
+	require.NoError(t, os.Remove(filepath.Join(dir, "db_password")))
+	require.NoError(t, os.Symlink(filepath.Join(dir, "nonexistent"), filepath.Join(dir, "db_password")))
+	defer func() { _ = os.Remove(filepath.Join(dir, "db_password")) }()
+
+	require.NoError(t, configloader.Refresh())
+
+	assert.Equal(t, "secret-pass", configloader.GetOrDefaultString("db.password", ""))
+	assert.Equal(t, "secret-token", configloader.GetOrDefaultString("api.token", ""))
 }
 
 func TestStartWatcher_MissingDirectory_ReturnsError(t *testing.T) {
