@@ -9,12 +9,11 @@ require (
 	github.com/knadh/koanf/maps v0.1.2
 	github.com/knadh/koanf/v2 v2.3.5
 	github.com/netcracker/qubership-core-lib-go/v3 v3.13.2
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.0
 )
 
 require (
 	github.com/armon/go-metrics v0.4.1 // indirect
-	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/fatih/color v1.19.0 // indirect
 	github.com/go-pkgz/expirable-cache/v3 v3.1.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
@@ -37,7 +36,6 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
-	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/viney-shih/go-lock v1.1.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.3 // indirect
 	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa // indirect
