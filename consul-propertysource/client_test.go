@@ -3,8 +3,6 @@ package consul
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -12,38 +10,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/consul/api"
-	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestConsul_getSecretIdByToken(t *testing.T) {
-	timeStr := time.Now().Format(time.RFC3339)
-	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		reqBody, err := io.ReadAll(req.Body)
-		assert.NoError(t, err)
-		var reqBodyMap map[string]interface{}
-		err = json.Unmarshal(reqBody, &reqBodyMap)
-		assert.Equal(t, "application/json", reqBodyMap["Accept"])
-
-		res.WriteHeader(http.StatusOK)
-
-		res.Write([]byte("{\"SecretID\": \"anonymous\", \"ExpirationTime\": \"" + timeStr + "\"}"))
-	}))
-	defer func() { testServer.Close() }()
-
-	provider := newProvider(ProviderConfig{
-		Address:          testServer.URL,
-		Namespace:        "test-namespace",
-		Paths:            DefaultPathsFor("control-plane", "cloudbss-kube-core-demo-2"),
-		MicroserviceName: "test-ms",
-		Ctx:              context.Background(),
-	})
-
-	token, expTime, err := provider.client.getSecretIdByToken("")
-	assert.NoError(t, err)
-	assert.Equal(t, "anonymous", token)
-	assert.Equal(t, timeStr, expTime.Format(time.RFC3339))
-}
 
 func TestClient_subscribeFor(t *testing.T) {
 	try := 0
@@ -93,7 +61,8 @@ func TestClient_subscribeFor_no_path(t *testing.T) {
 	}))
 	defer func() { testServer.Close() }()
 
-	ctx, _ := context.WithCancel(context.Background())
+	ctx, done := context.WithCancel(context.Background())
+	defer done()
 	client := NewClient(ClientConfig{
 		Address:   testServer.URL,
 		Namespace: "test",
@@ -116,7 +85,7 @@ func TestClient_subscribeFor_no_path(t *testing.T) {
 
 func TestClient_Login(t *testing.T) {
 	testSecretId := "anonymous"
-	configloader.InitWithSourcesArray([]*configloader.PropertySource{configloader.EnvPropertySource()})
+	initEnvConfigloader()
 	timeStr := time.Now().Add(5 * time.Minute).Format(time.RFC3339)
 	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusOK)
@@ -127,6 +96,7 @@ func TestClient_Login(t *testing.T) {
 		Address:   testServer.URL,
 		Namespace: "test",
 		Ctx:       context.Background(),
+		Mode:      AuthModeM2M,
 	})
 	assert.Nil(t, client.token)
 	err := client.Login()
@@ -135,8 +105,33 @@ func TestClient_Login(t *testing.T) {
 	assert.Equal(t, testSecretId, client.token.val.Load())
 }
 
+func TestClient_LoginUsesNamespaceAsM2MAuthMethod(t *testing.T) {
+	initEnvConfigloader()
+	requestedAuthMethod := ""
+	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		var params api.ACLLoginParams
+		assert.NoError(t, json.NewDecoder(req.Body).Decode(&params))
+		requestedAuthMethod = params.AuthMethod
+		res.WriteHeader(http.StatusOK)
+		res.Write([]byte("{\"SecretID\": \"test-secretId\", \"AuthMethod\": \"" + params.AuthMethod + "\"}"))
+	}))
+	defer func() { testServer.Close() }()
+	client := NewClient(ClientConfig{
+		Address:   testServer.URL,
+		Namespace: "test-namespace",
+		Ctx:       context.Background(),
+		Mode:      AuthModeM2M,
+	})
+
+	err := client.Login()
+
+	assert.NoError(t, err)
+	assert.Equal(t, "test-namespace", requestedAuthMethod)
+	assert.Equal(t, "test-secretId", client.SecretId())
+}
+
 func TestClient_LoginError(t *testing.T) {
-	configloader.InitWithSourcesArray([]*configloader.PropertySource{configloader.EnvPropertySource()})
+	initEnvConfigloader()
 	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusForbidden)
 		res.Write([]byte("Permission denied"))
@@ -146,21 +141,41 @@ func TestClient_LoginError(t *testing.T) {
 		Address:   testServer.URL,
 		Namespace: "test",
 		Ctx:       context.Background(),
+		Mode:      AuthModeM2M,
 	})
 	assert.Nil(t, client.token)
 	err := client.Login()
-	assert.NotNil(t, err)
-	expectedError := fmt.Sprintf("failed to get consul secret ID by token: non 200 response from Consul to request '%s/v1/acl/login': 403 - Permission denied", testServer.URL)
-	assert.Equal(t, expectedError, err.Error())
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to log in to Consul with auth method 'test'")
+	assert.Contains(t, err.Error(), "Unexpected response code: 403")
+	assert.Contains(t, err.Error(), "Permission denied")
+}
+
+func TestClient_LoginConfigError(t *testing.T) {
+	initEnvConfigloader()
+	client := NewClient(ClientConfig{
+		Address:   "test:8500",
+		Namespace: "test",
+		Ctx:       context.Background(),
+		Mode:      "unknown-mode",
+	})
+
+	err := client.Login()
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "consul.auth.mode")
+	assert.Nil(t, client.token)
+	assert.Equal(t, err, client.Login())
 }
 
 func TestClient_LoginEmptyToken(t *testing.T) {
-	configloader.InitWithSourcesArray([]*configloader.PropertySource{configloader.EnvPropertySource()})
+	initEnvConfigloader()
 
 	client := NewClient(ClientConfig{
 		Address:   "test:8500",
 		Namespace: "test",
 		Ctx:       context.Background(),
+		Mode:      AuthModeM2M,
 		tokenProvider: func() (string, error) {
 			return "", nil
 		},
@@ -169,30 +184,4 @@ func TestClient_LoginEmptyToken(t *testing.T) {
 	err := client.Login()
 	assert.NoError(t, err)
 	assert.Nil(t, client.token.val.Load())
-}
-
-func TestClient_startWatchSecretId(t *testing.T) {
-	var wg sync.WaitGroup
-	configloader.InitWithSourcesArray([]*configloader.PropertySource{configloader.EnvPropertySource()})
-	testSecretId := "anonymous"
-	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		res.WriteHeader(http.StatusOK)
-		expTime := time.Now().Add(thresholdBeforeUpdate).Add(10 * time.Second).Format(time.RFC3339)
-		res.Write([]byte("{\"SecretID\": \"" + testSecretId + "\", \"ExpirationTime\": \"" + expTime + "\"}"))
-	}))
-	client := NewClient(ClientConfig{
-		Address:   testServer.URL,
-		Namespace: "test",
-		Ctx:       context.Background(),
-	})
-	client.token = &ClientToken{}
-	assert.Empty(t, client.token.val.Load())
-	assert.Empty(t, client.token.expirationTime)
-	client.startWatchSecretId(100 * time.Millisecond)
-	wg.Add(1)
-	go func() {
-		assert.Eventuallyf(t, func() bool { return client.token.val.Load() == testSecretId }, 5*time.Second, 50*time.Millisecond, "must set secretId")
-		wg.Done()
-	}()
-	wg.Wait()
 }
