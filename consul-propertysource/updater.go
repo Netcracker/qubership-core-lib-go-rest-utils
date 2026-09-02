@@ -5,7 +5,10 @@ import (
 	"time"
 )
 
-const refreshRatio = 0.8
+const (
+	refreshRatio         = 0.8
+	maxRefreshRetryDelay = 5 * time.Minute
+)
 
 var minRefreshDelay = 10 * time.Second
 
@@ -20,6 +23,14 @@ func refreshDelay(expiration *time.Time, now time.Time) (time.Duration, bool) {
 	return delay, true
 }
 
+func nextRetryDelay(current time.Duration) time.Duration {
+	next := current * 2
+	if next > maxRefreshRetryDelay {
+		return maxRefreshRetryDelay
+	}
+	return next
+}
+
 type tokenUpdater struct {
 	provider tokenProvider
 	apply    func(*consulToken)
@@ -32,7 +43,7 @@ func (u *tokenUpdater) start(ctx context.Context, first *consulToken) {
 		return
 	}
 	go func() {
-		current := first
+		retryDelay := minRefreshDelay
 		timer := time.NewTimer(delay)
 		defer timer.Stop()
 		for {
@@ -42,15 +53,12 @@ func (u *tokenUpdater) start(ctx context.Context, first *consulToken) {
 			case <-timer.C:
 				token, err := u.provider.GetToken(ctx)
 				if err != nil {
-					retryDelay, retryScheduled := refreshDelay(current.expirationTime, u.now())
-					if !retryScheduled {
-						retryDelay = minRefreshDelay
-					}
 					logger.ErrorC(ctx, "failed to refresh Consul token: %s. Next attempt in %s", err.Error(), retryDelay)
 					timer.Reset(retryDelay)
+					retryDelay = nextRetryDelay(retryDelay)
 					continue
 				}
-				current = token
+				retryDelay = minRefreshDelay
 				u.apply(token)
 				nextDelay, nextScheduled := refreshDelay(token.expirationTime, u.now())
 				if !nextScheduled {

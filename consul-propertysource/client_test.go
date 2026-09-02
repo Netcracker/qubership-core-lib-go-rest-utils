@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -184,4 +185,91 @@ func TestClient_LoginEmptyToken(t *testing.T) {
 	err := client.Login()
 	assert.NoError(t, err)
 	assert.Nil(t, client.token.val.Load())
+}
+
+func assertKubernetesCredentials(t *testing.T, provider tokenProvider, authMethod, audience string) {
+	login, isLogin := provider.(*loginTokenProvider)
+	if !assert.True(t, isLogin) {
+		return
+	}
+	credentials, isKubernetes := login.credentials.(kubernetesCredentials)
+	if !assert.True(t, isKubernetes) {
+		return
+	}
+	assert.Equal(t, authMethod, credentials.authMethod)
+	assert.Equal(t, audience, credentials.audience)
+}
+
+func assertM2MCredentials(t *testing.T, provider tokenProvider, authMethod string) {
+	login, isLogin := provider.(*loginTokenProvider)
+	if !assert.True(t, isLogin) {
+		return
+	}
+	credentials, isM2M := login.credentials.(m2mCredentials)
+	if !assert.True(t, isM2M) {
+		return
+	}
+	assert.Equal(t, authMethod, credentials.authMethod)
+}
+
+func TestClient_TokenProviderPerMode(t *testing.T) {
+	initEnvConfigloader()
+
+	fallbackClient := NewClient(ClientConfig{Namespace: "test-namespace", Ctx: context.Background()})
+	assert.NoError(t, fallbackClient.initTokenProvider())
+	fallback, isFallback := fallbackClient.provider.(*fallbackTokenProvider)
+	if assert.True(t, isFallback) {
+		assert.Equal(t, "applications-k8s-m2m", fallback.primaryAuthMethod)
+		assert.Equal(t, "test-namespace", fallback.secondaryAuthMethod)
+		assert.Equal(t, 5*time.Hour, fallback.interval)
+		assertKubernetesCredentials(t, fallback.primary, "applications-k8s-m2m", "netcracker")
+		assertM2MCredentials(t, fallback.secondary, "test-namespace")
+	}
+
+	kubernetesClient := NewClient(ClientConfig{
+		Namespace:  "test-namespace",
+		Ctx:        context.Background(),
+		Mode:       AuthModeKubernetes,
+		AuthMethod: "k8s-method",
+		Audience:   "k8s-audience",
+	})
+	assert.NoError(t, kubernetesClient.initTokenProvider())
+	assertKubernetesCredentials(t, kubernetesClient.provider, "k8s-method", "k8s-audience")
+
+	m2mClient := NewClient(ClientConfig{
+		Namespace: "test-namespace",
+		Ctx:       context.Background(),
+		Mode:      AuthModeM2M,
+	})
+	assert.NoError(t, m2mClient.initTokenProvider())
+	assertM2MCredentials(t, m2mClient.provider, "test-namespace")
+}
+
+func TestClient_RefreshedTokenReachesSecretId(t *testing.T) {
+	withShortMinRefreshDelay(t)
+	initEnvConfigloader()
+	logins := 0
+	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		logins++
+		expirationTime := time.Now().Add(time.Millisecond).Format(time.RFC3339)
+		if logins > 1 {
+			expirationTime = time.Now().Add(time.Hour).Format(time.RFC3339)
+		}
+		res.WriteHeader(http.StatusOK)
+		res.Write([]byte("{\"SecretID\": \"secret-" + strconv.Itoa(logins) + "\", \"ExpirationTime\": \"" + expirationTime + "\"}"))
+	}))
+	defer func() { testServer.Close() }()
+	ctx, done := context.WithCancel(context.Background())
+	defer done()
+	client := NewClient(ClientConfig{
+		Address:   testServer.URL,
+		Namespace: "test",
+		Ctx:       ctx,
+		Mode:      AuthModeM2M,
+	})
+
+	assert.NoError(t, client.Login())
+	assert.Equal(t, "secret-1", client.SecretId())
+
+	assert.Eventually(t, func() bool { return client.SecretId() == "secret-2" }, 5*time.Second, 20*time.Millisecond)
 }

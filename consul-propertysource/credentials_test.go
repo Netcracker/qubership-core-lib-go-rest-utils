@@ -2,7 +2,6 @@ package consul
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 
 	"github.com/netcracker/qubership-core-lib-go/v3/security/tokensource"
@@ -17,7 +16,7 @@ func TestKubernetesCredentials_AuthMethod(t *testing.T) {
 
 func TestKubernetesCredentials_BearerTokenError(t *testing.T) {
 	tokensDir := tokensource.DefaultAudienceTokensDir
-	tokensource.DefaultAudienceTokensDir = filepath.Join(t.TempDir(), "absent")
+	tokensource.DefaultAudienceTokensDir = "absent-audience-tokens-dir"
 	defer func() { tokensource.DefaultAudienceTokensDir = tokensDir }()
 
 	credentials := kubernetesCredentials{authMethod: "k8s-method", audience: "netcracker"}

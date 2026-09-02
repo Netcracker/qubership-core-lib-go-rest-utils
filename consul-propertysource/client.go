@@ -49,6 +49,9 @@ type ClientToken struct {
 }
 
 func NewClient(cfg ClientConfig) *Client {
+	if cfg.Ctx == nil {
+		cfg.Ctx = context.Background()
+	}
 	return &Client{
 		consul: newConsulApiClient(cfg.Address, ""),
 		cfg:    cfg,

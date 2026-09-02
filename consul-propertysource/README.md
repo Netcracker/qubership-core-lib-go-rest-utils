@@ -74,6 +74,8 @@ The property source logs in to Consul and uses the returned ACL token for all fu
 | **kubernetes** | Logs in with the Kubernetes projected volume token only. A login failure is returned to the caller. |
 | **m2m** | Logs in with the m2m token only, using the microservice namespace as the auth method name. This is the way used before the `kubernetes` auth method was introduced. |
 
+A probe of the kubernetes way rides on a scheduled relogin, so **consul.auth.fallback.recheck.interval** is a lower bound and not a period. A client that holds a token without an expiration time never relogins, and keeps the way it picked at startup until the microservice restarts.
+
 *  **consul.auth.mode** - way to get the ACL token: **kubernetes-with-m2m-fallback**, **kubernetes** or **m2m** (default: **kubernetes-with-m2m-fallback**)
 *  **consul.auth.method** - name of the Consul auth method of type kubernetes (default: **applications-k8s-m2m**)
 *  **consul.auth.audience** - audience of the Kubernetes projected volume token (default: **netcracker**)

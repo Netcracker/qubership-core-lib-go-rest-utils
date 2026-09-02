@@ -32,7 +32,9 @@ func (p *fallbackTokenProvider) GetToken(ctx context.Context) (*consulToken, err
 		token, err := p.primary.GetToken(ctx)
 		if err == nil {
 			p.switched = true
-			logger.InfoC(ctx, "Consul login with auth method '%s' succeeded. Fallback disabled", p.primaryAuthMethod)
+			if p.fallbackLogged {
+				logger.InfoC(ctx, "Consul login with auth method '%s' succeeded. Fallback disabled", p.primaryAuthMethod)
+			}
 			return token, nil
 		}
 		p.lastProbe = p.now()

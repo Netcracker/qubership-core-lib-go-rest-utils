@@ -79,6 +79,13 @@ func TestRefreshDelay_LowerBound(t *testing.T) {
 	assert.Equal(t, minRefreshDelay, expiredDelay)
 }
 
+func TestNextRetryDelay(t *testing.T) {
+	assert.Equal(t, 20*time.Second, nextRetryDelay(10*time.Second))
+	assert.Equal(t, 4*time.Minute, nextRetryDelay(2*time.Minute))
+	assert.Equal(t, maxRefreshRetryDelay, nextRetryDelay(maxRefreshRetryDelay))
+	assert.Equal(t, maxRefreshRetryDelay, nextRetryDelay(time.Hour))
+}
+
 func TestTokenUpdater_SchedulesBySecondTokenExpiration(t *testing.T) {
 	withShortMinRefreshDelay(t)
 	moment := time.Now()
@@ -162,7 +169,7 @@ func TestTokenUpdater_StopsOnContextDone(t *testing.T) {
 	withShortMinRefreshDelay(t)
 	moment := time.Now()
 	provider := &scriptedTokenProvider{results: []tokenResult{
-		{token: &consulToken{secretID: "second", expirationTime: expirationAt(moment, time.Millisecond)}},
+		{token: &consulToken{secretID: "second", expirationTime: expirationAt(moment, time.Hour)}},
 	}}
 	applied := make(chan *consulToken, 16)
 	ctx, cancel := context.WithCancel(context.Background())

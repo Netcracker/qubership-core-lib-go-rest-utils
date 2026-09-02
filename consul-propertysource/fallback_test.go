@@ -138,6 +138,26 @@ func TestFallbackTokenProvider_LogsFallbackOnce(t *testing.T) {
 }
 
 func TestFallbackTokenProvider_LogsSwitch(t *testing.T) {
+	primary := &stubTokenProvider{err: errors.New("login failed")}
+	secondary := &stubTokenProvider{token: &consulToken{secretID: "m2m-secret"}}
+	moment := time.Now()
+	provider := newFallbackForTest(primary, secondary, func() time.Time { return moment })
+
+	out := captureStdout(t, func() {
+		_, err := provider.GetToken(context.Background())
+		assert.NoError(t, err)
+
+		primary.err = nil
+		primary.token = &consulToken{secretID: "k8s-secret", authMethod: "k8s-method"}
+		moment = moment.Add(provider.interval)
+		_, err = provider.GetToken(context.Background())
+		assert.NoError(t, err)
+	})
+
+	assert.Equal(t, 1, strings.Count(out, "Consul login with auth method 'k8s-method' succeeded. Fallback disabled"))
+}
+
+func TestFallbackTokenProvider_SilentWhenPrimarySucceedsFirst(t *testing.T) {
 	primary := &stubTokenProvider{token: &consulToken{secretID: "k8s-secret", authMethod: "k8s-method"}}
 	secondary := &stubTokenProvider{token: &consulToken{secretID: "m2m-secret"}}
 	moment := time.Now()
@@ -148,5 +168,6 @@ func TestFallbackTokenProvider_LogsSwitch(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	assert.Equal(t, 1, strings.Count(out, "Consul login with auth method 'k8s-method' succeeded. Fallback disabled"))
+	assert.True(t, provider.switched)
+	assert.NotContains(t, out, "Fallback disabled")
 }
