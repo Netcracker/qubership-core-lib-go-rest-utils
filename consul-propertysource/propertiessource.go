@@ -42,11 +42,11 @@ type ProviderConfig struct {
 	Token string
 	// Consul ACL token acquisition mode: kubernetes-with-m2m-fallback, kubernetes or m2m (default: value from consul.auth.mode)
 	Mode AuthMode
-	// Name of the Consul auth method of type kubernetes (default: value from consul.auth.method)
+	// Name of the Consul auth method of type jwt (default: value from consul.auth.method)
 	AuthMethod string
 	// Audience of the Kubernetes projected volume token (default: value from consul.auth.audience)
 	Audience string
-	// How long the m2m fallback lasts before the kubernetes auth method is probed again (default: value from consul.auth.fallback.recheck.interval)
+	// How long the m2m fallback lasts before the kubernetes way is probed again (default: value from consul.auth.fallback.recheck.interval)
 	FallbackRecheckInterval time.Duration
 	// Allows to override getting m2m token logic (default: nil)
 	tokenProvider func() (string, error)

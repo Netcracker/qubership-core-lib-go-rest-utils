@@ -26,7 +26,7 @@ func (c kubernetesCredentials) BearerToken(ctx context.Context) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	// An empty bearer token means anonymous access, which the kubernetes auth method never grants.
+	// An empty bearer token means anonymous access, which this way of logging in never grants.
 	if token == "" {
 		return "", fmt.Errorf("projected volume token for audience '%s' is empty", c.audience)
 	}
