@@ -245,6 +245,10 @@ func TestClient_TokenProviderPerMode(t *testing.T) {
 	assertM2MCredentials(t, m2mClient.provider, "test-namespace")
 }
 
+func TestClient_DefaultsContext(t *testing.T) {
+	assert.NotNil(t, NewClient(ClientConfig{Address: "test:8500"}).cfg.Ctx)
+}
+
 func TestClient_RefreshedTokenReachesSecretId(t *testing.T) {
 	withShortMinRefreshDelay(t)
 	initEnvConfigloader()

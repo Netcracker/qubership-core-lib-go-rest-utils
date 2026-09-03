@@ -3,6 +3,7 @@ package consul
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -163,6 +164,38 @@ func TestTokenUpdater_KeepsScheduleAfterError(t *testing.T) {
 
 	assert.Equal(t, second, <-applied)
 	assert.Equal(t, 2, provider.callCount())
+}
+
+func TestTokenUpdater_BacksOffAndResetsRetryDelay(t *testing.T) {
+	withShortMinRefreshDelay(t)
+	moment := time.Now()
+	loginFailed := errors.New("login failed")
+	provider := &scriptedTokenProvider{results: []tokenResult{
+		{err: loginFailed},
+		{err: loginFailed},
+		{token: &consulToken{secretID: "second", expirationTime: expirationAt(moment, time.Millisecond)}},
+		{err: loginFailed},
+	}}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	updater := &tokenUpdater{
+		provider: provider,
+		apply:    func(token *consulToken) {},
+		now:      func() time.Time { return moment },
+	}
+
+	out := captureStdout(t, func() {
+		updater.start(ctx, &consulToken{secretID: "first", expirationTime: expirationAt(moment, time.Millisecond)})
+		assert.Eventually(t, func() bool { return provider.callCount() >= 5 }, 5*time.Second, 5*time.Millisecond)
+	})
+
+	firstTen := strings.Index(out, "Next attempt in 10ms")
+	firstTwenty := strings.Index(out, "Next attempt in 20ms")
+	lastTen := strings.LastIndex(out, "Next attempt in 10ms")
+	assert.GreaterOrEqual(t, firstTen, 0)
+	assert.Greater(t, firstTwenty, firstTen)
+	assert.Greater(t, lastTen, firstTwenty)
 }
 
 func TestTokenUpdater_StopsOnContextDone(t *testing.T) {
