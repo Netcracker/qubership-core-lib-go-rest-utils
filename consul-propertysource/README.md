@@ -5,6 +5,7 @@ This property source allows downloading properties from a Consul service.
 
 - [How to get](#how-to-get)
 - [Usage](#usage)
+- [Authentication](#authentication)
 - [Plain Consul Client](#plain-consul-client)
   
 ## How to get
@@ -62,6 +63,40 @@ consul.StartWatchingForPropertiesWithRetry(context.Background(), consulPS, func(
 ```
 
 Then logging configuration will be automatically gathered from 'logging/<namespace>/<microserviceName>' root.
+
+## Authentication
+
+The property source logs in to Consul and uses the returned ACL token for all further requests. There are two ways to get that token: an exchange of a Kubernetes projected volume token through a Consul auth method of type `jwt`, and an exchange of an m2m token. The way is selected by **consul.auth.mode**. The mode names below say where the presented token comes from, not which type the Consul auth method has.
+
+| Mode | Behavior |
+|---|---|
+| **kubernetes-with-m2m-fallback** | Logs in with the Kubernetes projected volume token. On failure falls back to the m2m token and probes the Kubernetes way again every **consul.auth.fallback.recheck.interval**. Once a probe succeeds, the fallback is disabled until the microservice restarts. |
+| **kubernetes** | Logs in with the Kubernetes projected volume token only. A login failure is returned to the caller. |
+| **m2m** | Logs in with the m2m token only, using the microservice namespace as the auth method name. This is the way used before the projected volume token exchange was introduced. |
+
+A probe of the kubernetes way rides on a scheduled relogin, so **consul.auth.fallback.recheck.interval** is a lower bound and not a period. A client that holds a token without an expiration time never relogins, and keeps the way it picked at startup until the microservice restarts.
+
+*  **consul.auth.mode** - way to get the ACL token: **kubernetes-with-m2m-fallback**, **kubernetes** or **m2m** (default: **kubernetes-with-m2m-fallback**)
+*  **consul.auth.method** - name of the Consul auth method of type jwt (default: **applications-k8s-m2m**)
+*  **consul.auth.audience** - audience of the Kubernetes projected volume token (default: **netcracker**)
+*  **consul.auth.fallback.recheck.interval** - how long the m2m fallback lasts before the kubernetes way is probed again (default: **5h**)
+
+Each property has a matching field in `ProviderConfig` and `ClientConfig`: `Mode`, `AuthMethod`, `Audience`, and `FallbackRecheckInterval`. A non-empty field wins over the property.
+
+The **kubernetes** and **kubernetes-with-m2m-fallback** modes need two things in place:
+
+1. The pod mounts a projected volume with a token of the audience from **consul.auth.audience** under `/var/run/secrets/tokens`.
+2. Consul has an auth method of type `jwt` named as in **consul.auth.method**, whose `BoundAudiences` cover the audience from **consul.auth.audience** and whose binding rules grant the microservice its policies.
+
+Roll out in this order: mount the projected volume, create the auth method with its binding rules, then start the microservices with the default mode. Until both are in place, the default mode keeps working through the m2m fallback.
+
+Every successful login writes an INFO record with the name of the auth method that issued the token, so the way in use is visible in the log:
+
+```text
+Logged in to Consul with auth method 'applications-k8s-m2m'
+```
+
+`ClientConfig.Namespace` is used as the auth method name by the **m2m** mode only.
 
 ## Plain Consul Client
 
