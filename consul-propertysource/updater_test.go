@@ -220,3 +220,26 @@ func TestTokenUpdater_StopsOnContextDone(t *testing.T) {
 
 	assert.Eventually(t, func() bool { return provider.callCount() == stopped }, time.Second, 50*time.Millisecond)
 }
+
+func TestTokenUpdater_KeepsScheduleAfterEmptyToken(t *testing.T) {
+	withShortMinRefreshDelay(t)
+	moment := time.Now()
+	second := &consulToken{secretID: "second", expirationTime: expirationAt(moment, time.Hour)}
+	provider := &scriptedTokenProvider{results: []tokenResult{
+		{token: &consulToken{}},
+		{token: second},
+	}}
+	applied := make(chan *consulToken, 4)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	updater := &tokenUpdater{
+		provider: provider,
+		apply:    func(token *consulToken) { applied <- token },
+		now:      func() time.Time { return moment },
+	}
+	updater.start(ctx, &consulToken{secretID: "first", expirationTime: expirationAt(moment, time.Millisecond)})
+
+	assert.Equal(t, second, <-applied)
+	assert.Equal(t, 2, provider.callCount())
+}

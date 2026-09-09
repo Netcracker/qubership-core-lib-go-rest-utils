@@ -2,6 +2,7 @@ package consul
 
 import (
 	"context"
+	"errors"
 	"time"
 )
 
@@ -52,6 +53,9 @@ func (u *tokenUpdater) start(ctx context.Context, first *consulToken) {
 				return
 			case <-timer.C:
 				token, err := u.provider.GetToken(ctx)
+				if err == nil && token.secretID == "" {
+					err = errors.New("login returned no token")
+				}
 				if err != nil {
 					logger.ErrorC(ctx, "failed to refresh Consul token: %s. Next attempt in %s", err.Error(), retryDelay)
 					timer.Reset(retryDelay)
