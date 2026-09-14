@@ -102,7 +102,6 @@ func TestClient_Login(t *testing.T) {
 	assert.Nil(t, client.token)
 	err := client.Login()
 	assert.NoError(t, err)
-	assert.Equal(t, timeStr, client.token.expirationTime.Format(time.RFC3339))
 	assert.Equal(t, testSecretId, client.token.val.Load())
 }
 

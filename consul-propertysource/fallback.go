@@ -2,9 +2,14 @@ package consul
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 )
+
+const probeTries = 3
+
+var probePause = time.Second
 
 type fallbackTokenProvider struct {
 	primary             tokenProvider
@@ -29,7 +34,7 @@ func (p *fallbackTokenProvider) GetToken(ctx context.Context) (*consulToken, err
 	}
 
 	if p.probeDue() {
-		token, err := p.primary.GetToken(ctx)
+		token, err := p.probe(ctx)
 		if err == nil {
 			p.switched = true
 			if p.fallbackLogged {
@@ -46,6 +51,20 @@ func (p *fallbackTokenProvider) GetToken(ctx context.Context) (*consulToken, err
 	}
 
 	return p.secondary.GetToken(ctx)
+}
+
+func (p *fallbackTokenProvider) probe(ctx context.Context) (*consulToken, error) {
+	for attempt := 1; ; attempt++ {
+		token, err := p.primary.GetToken(ctx)
+		if err == nil || attempt == probeTries || !errors.Is(err, errConsulLogin) {
+			return token, err
+		}
+		select {
+		case <-ctx.Done():
+			return nil, err
+		case <-time.After(probePause):
+		}
+	}
 }
 
 func (p *fallbackTokenProvider) probeDue() bool {

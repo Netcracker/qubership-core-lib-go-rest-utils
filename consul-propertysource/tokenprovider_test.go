@@ -94,6 +94,7 @@ func TestLoginTokenProvider_GetTokenForbidden(t *testing.T) {
 	assert.True(t, errors.As(err, &statusError))
 	assert.Equal(t, http.StatusForbidden, statusError.Code)
 	assert.Contains(t, err.Error(), "k8s-method")
+	assert.ErrorIs(t, err, errConsulLogin)
 }
 
 func TestLoginTokenProvider_GetTokenCredentialsError(t *testing.T) {
@@ -111,6 +112,7 @@ func TestLoginTokenProvider_GetTokenCredentialsError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "k8s-method")
 	assert.Contains(t, err.Error(), "no token file")
+	assert.NotErrorIs(t, err, errConsulLogin)
 }
 
 func TestLoginTokenProvider_GetTokenEmptyBearer(t *testing.T) {

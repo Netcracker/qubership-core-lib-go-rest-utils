@@ -44,8 +44,7 @@ type Client struct {
 }
 
 type ClientToken struct {
-	val            atomic.Value
-	expirationTime time.Time
+	val atomic.Value
 }
 
 func NewClient(cfg ClientConfig) *Client {
@@ -93,7 +92,6 @@ func (r *Client) Login() error {
 		r.token.val.Store(token.secretID)
 	}
 	if token.expirationTime != nil {
-		r.token.expirationTime = *token.expirationTime
 		r.updater.start(r.cfg.Ctx, token)
 	}
 
@@ -166,9 +164,6 @@ func (r *Client) applyToken(token *consulToken) {
 	defer r.mutex.Unlock()
 
 	r.token.val.Store(token.secretID)
-	if token.expirationTime != nil {
-		r.token.expirationTime = *token.expirationTime
-	}
 }
 
 func (r *Client) SecretId() string {

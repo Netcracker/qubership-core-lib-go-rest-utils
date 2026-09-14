@@ -2,11 +2,14 @@ package consul
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	consulApi "github.com/hashicorp/consul/api"
 )
+
+var errConsulLogin = errors.New("failed to log in to Consul")
 
 type consulToken struct {
 	secretID       string
@@ -38,7 +41,7 @@ func (p *loginTokenProvider) GetToken(ctx context.Context) (*consulToken, error)
 		BearerToken: bearer,
 	}, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to log in to Consul with auth method '%s': %w", authMethod, err)
+		return nil, fmt.Errorf("%w with auth method '%s': %w", errConsulLogin, authMethod, err)
 	}
 
 	return &consulToken{

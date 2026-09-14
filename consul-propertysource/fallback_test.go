@@ -3,6 +3,7 @@ package consul
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -170,4 +171,62 @@ func TestFallbackTokenProvider_SilentWhenPrimarySucceedsFirst(t *testing.T) {
 
 	assert.True(t, provider.switched)
 	assert.NotContains(t, out, "Fallback disabled")
+}
+
+func withShortProbePause(t *testing.T) {
+	original := probePause
+	probePause = time.Millisecond
+	t.Cleanup(func() { probePause = original })
+}
+
+func consulLoginError() error {
+	return fmt.Errorf("%w: connection refused", errConsulLogin)
+}
+
+func TestFallbackTokenProvider_RetriesProbeWhenConsulCallFails(t *testing.T) {
+	withShortProbePause(t)
+	primary := &stubTokenProvider{err: consulLoginError()}
+	secondary := &stubTokenProvider{token: &consulToken{secretID: "m2m-secret"}}
+	moment := time.Now()
+	provider := newFallbackForTest(primary, secondary, func() time.Time { return moment })
+
+	token, err := provider.GetToken(context.Background())
+
+	assert.NoError(t, err)
+	assert.Equal(t, "m2m-secret", token.secretID)
+	assert.Equal(t, probeTries, primary.calls)
+	assert.False(t, provider.switched)
+}
+
+func TestFallbackTokenProvider_StopsProbeRetriesOnSuccess(t *testing.T) {
+	withShortProbePause(t)
+	primary := &scriptedTokenProvider{results: []tokenResult{
+		{err: consulLoginError()},
+		{token: &consulToken{secretID: "k8s-secret", authMethod: "k8s-method"}},
+	}}
+	secondary := &stubTokenProvider{token: &consulToken{secretID: "m2m-secret"}}
+	moment := time.Now()
+	provider := newFallbackForTest(primary, secondary, func() time.Time { return moment })
+
+	token, err := provider.GetToken(context.Background())
+
+	assert.NoError(t, err)
+	assert.Equal(t, "k8s-secret", token.secretID)
+	assert.Equal(t, 2, primary.callCount())
+	assert.Zero(t, secondary.calls)
+	assert.True(t, provider.switched)
+}
+
+func TestFallbackTokenProvider_DoesNotRetryProbeOnBearerTokenFailure(t *testing.T) {
+	withShortProbePause(t)
+	primary := &stubTokenProvider{err: errors.New("projected volume token for audience 'netcracker' is empty")}
+	secondary := &stubTokenProvider{token: &consulToken{secretID: "m2m-secret"}}
+	moment := time.Now()
+	provider := newFallbackForTest(primary, secondary, func() time.Time { return moment })
+
+	token, err := provider.GetToken(context.Background())
+
+	assert.NoError(t, err)
+	assert.Equal(t, "m2m-secret", token.secretID)
+	assert.Equal(t, 1, primary.calls)
 }
