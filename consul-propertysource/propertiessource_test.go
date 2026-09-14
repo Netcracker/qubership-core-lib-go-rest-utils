@@ -563,3 +563,19 @@ func (m MockProvider) Watch(cb func(event interface{}, err error)) error {
 func newMockProvider() Provider {
 	return &MockProvider{}
 }
+
+func TestNewProvider_PassesAuthSettingsToClient(t *testing.T) {
+	provider := newProvider(ProviderConfig{
+		Address:                 "http://consul:8500",
+		Namespace:               "test-namespace",
+		Mode:                    AuthModeKubernetes,
+		AuthMethod:              "custom-method",
+		Audience:                "custom-audience",
+		FallbackRecheckInterval: 90 * time.Minute,
+	})
+
+	assert.Equal(t, AuthModeKubernetes, provider.client.cfg.Mode)
+	assert.Equal(t, "custom-method", provider.client.cfg.AuthMethod)
+	assert.Equal(t, "custom-audience", provider.client.cfg.Audience)
+	assert.Equal(t, 90*time.Minute, provider.client.cfg.FallbackRecheckInterval)
+}
