@@ -22,7 +22,7 @@ func init() {
 
 type ClientConfig struct {
 	Address string
-	// Deprecated: used by the m2m mode only
+	// Namespace is the auth method name the m2m way logs in to; the kubernetes way ignores it.
 	Namespace               string
 	Ctx                     context.Context
 	Token                   *ClientToken
