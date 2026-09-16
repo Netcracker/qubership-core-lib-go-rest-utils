@@ -18,9 +18,8 @@ import (
 )
 
 const (
-	baseConfigPath        = "config"
-	baseLoggingPath       = "logging"
-	thresholdBeforeUpdate = 2 * time.Minute
+	baseConfigPath  = "config"
+	baseLoggingPath = "logging"
 )
 
 var refreshConfig = configloader.Refresh
@@ -41,6 +40,14 @@ type ProviderConfig struct {
 	// Setting a value in the Token field disables the mechanism for obtaining a Consul token via anonymous request and instead uses the specified token
 	// nil by default is switches property source to use anonymous request authentication mechanism
 	Token string
+	// Consul ACL token acquisition mode: kubernetes-with-m2m-fallback, kubernetes or m2m (default: value from consul.auth.mode)
+	Mode AuthMode
+	// Name of the Consul auth method of type jwt (default: value from consul.auth.method)
+	AuthMethod string
+	// Audience of the Kubernetes projected volume token (default: value from consul.auth.audience)
+	Audience string
+	// How long the m2m fallback lasts before the kubernetes way is probed again (default: value from consul.auth.fallback.recheck.interval)
+	FallbackRecheckInterval time.Duration
 	// Allows to override getting m2m token logic (default: nil)
 	tokenProvider func() (string, error)
 	// If true, then default Paths will be "logging/<namespace>/<microservice-name>" (default: false)
@@ -108,11 +115,15 @@ func newProvider(cfg ProviderConfig) *ProviderImpl {
 	return &ProviderImpl{
 		cfg: cfg,
 		client: NewClient(ClientConfig{
-			Address:       cfg.Address,
-			Namespace:     cfg.Namespace,
-			Ctx:           cfg.Ctx,
-			Token:         token,
-			tokenProvider: cfg.tokenProvider,
+			Address:                 cfg.Address,
+			Namespace:               cfg.Namespace,
+			Ctx:                     cfg.Ctx,
+			Token:                   token,
+			Mode:                    cfg.Mode,
+			AuthMethod:              cfg.AuthMethod,
+			Audience:                cfg.Audience,
+			FallbackRecheckInterval: cfg.FallbackRecheckInterval,
+			tokenProvider:           cfg.tokenProvider,
 		}),
 		configIndex:   make(map[string]uint64),
 		tokenProvider: cfg.tokenProvider,
