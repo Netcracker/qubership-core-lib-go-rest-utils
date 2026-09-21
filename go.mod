@@ -1,11 +1,11 @@
 module github.com/netcracker/qubership-core-lib-go-rest-utils/v2
 
-go 1.26.5
+go 1.26.7
 
 require (
 	github.com/avast/retry-go/v4 v4.7.0
 	github.com/fsnotify/fsnotify v1.10.1
-	github.com/hashicorp/consul/api v1.34.4
+	github.com/hashicorp/consul/api v1.34.5
 	github.com/knadh/koanf/maps v0.1.3
 	github.com/knadh/koanf/v2 v2.3.6
 	github.com/netcracker/qubership-core-lib-go/v3 v3.14.0
@@ -38,7 +38,7 @@ require (
 	github.com/viney-shih/go-lock v1.1.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa // indirect
-	golang.org/x/sync v0.21.0 // indirect
-	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
