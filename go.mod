@@ -8,7 +8,7 @@ require (
 	github.com/hashicorp/consul/api v1.34.4
 	github.com/knadh/koanf/maps v0.1.3
 	github.com/knadh/koanf/v2 v2.3.6
-	github.com/netcracker/qubership-core-lib-go/v3 v3.14.1
+	github.com/netcracker/qubership-core-lib-go/v3 v3.14.2-0.20260930115738-1de4576730ab
 	github.com/stretchr/testify v1.12.1
 )
 
