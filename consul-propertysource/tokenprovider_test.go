@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	consulApi "github.com/hashicorp/consul/api"
+	consulApi "github.com/hashicorp/consul/api/v2"
 	"github.com/stretchr/testify/assert"
 )
 
