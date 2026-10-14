@@ -123,9 +123,9 @@ func (r *Client) initTokenProvider() error {
 
 func (r *Client) newTokenProvider(authCfg authConfig) tokenProvider {
 	switch authCfg.mode {
-	case AuthModeM2M:
+	case AuthModeLegacy:
 		return r.m2mTokenProvider()
-	case AuthModeKubernetes:
+	case AuthModeK8s:
 		return r.kubernetesTokenProvider(authCfg)
 	default:
 		return &fallbackTokenProvider{

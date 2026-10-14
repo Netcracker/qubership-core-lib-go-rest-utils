@@ -18,14 +18,14 @@ func TestResolveAuthConfig_Defaults(t *testing.T) {
 	cfg, err := resolveAuthConfig(ClientConfig{})
 
 	assert.NoError(t, err)
-	assert.Equal(t, AuthModeKubernetesWithM2MFallback, cfg.mode)
+	assert.Equal(t, AuthModeLegacy, cfg.mode)
 	assert.Equal(t, "applications-k8s-m2m", cfg.authMethod)
 	assert.Equal(t, "netcracker", cfg.audience)
 	assert.Equal(t, 5*time.Hour, cfg.recheckInterval)
 }
 
 func TestResolveAuthConfig_PropertyOverridesDefault(t *testing.T) {
-	t.Setenv("CONSUL_AUTH_MODE", "kubernetes")
+	t.Setenv("CONSUL_AUTH_MODE", "k8s")
 	t.Setenv("CONSUL_AUTH_METHOD", "property-method")
 	t.Setenv("CONSUL_AUTH_AUDIENCE", "property-audience")
 	t.Setenv("CONSUL_AUTH_FALLBACK_RECHECK_INTERVAL", "30m")
@@ -34,28 +34,28 @@ func TestResolveAuthConfig_PropertyOverridesDefault(t *testing.T) {
 	cfg, err := resolveAuthConfig(ClientConfig{})
 
 	assert.NoError(t, err)
-	assert.Equal(t, AuthModeKubernetes, cfg.mode)
+	assert.Equal(t, AuthModeK8s, cfg.mode)
 	assert.Equal(t, "property-method", cfg.authMethod)
 	assert.Equal(t, "property-audience", cfg.audience)
 	assert.Equal(t, 30*time.Minute, cfg.recheckInterval)
 }
 
 func TestResolveAuthConfig_FieldOverridesProperty(t *testing.T) {
-	t.Setenv("CONSUL_AUTH_MODE", "kubernetes")
+	t.Setenv("CONSUL_AUTH_MODE", "k8s")
 	t.Setenv("CONSUL_AUTH_METHOD", "property-method")
 	t.Setenv("CONSUL_AUTH_AUDIENCE", "property-audience")
 	t.Setenv("CONSUL_AUTH_FALLBACK_RECHECK_INTERVAL", "30m")
 	initEnvConfigloader()
 
 	cfg, err := resolveAuthConfig(ClientConfig{
-		Mode:                    AuthModeM2M,
+		Mode:                    AuthModeLegacy,
 		AuthMethod:              "field-method",
 		Audience:                "field-audience",
 		FallbackRecheckInterval: time.Minute,
 	})
 
 	assert.NoError(t, err)
-	assert.Equal(t, AuthModeM2M, cfg.mode)
+	assert.Equal(t, AuthModeLegacy, cfg.mode)
 	assert.Equal(t, "field-method", cfg.authMethod)
 	assert.Equal(t, "field-audience", cfg.audience)
 	assert.Equal(t, time.Minute, cfg.recheckInterval)
