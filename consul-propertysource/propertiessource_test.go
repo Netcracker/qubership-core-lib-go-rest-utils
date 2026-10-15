@@ -568,13 +568,13 @@ func TestNewProvider_PassesAuthSettingsToClient(t *testing.T) {
 	provider := newProvider(ProviderConfig{
 		Address:                 "http://consul:8500",
 		Namespace:               "test-namespace",
-		Mode:                    AuthModeKubernetes,
+		Mode:                    AuthModeK8s,
 		AuthMethod:              "custom-method",
 		Audience:                "custom-audience",
 		FallbackRecheckInterval: 90 * time.Minute,
 	})
 
-	assert.Equal(t, AuthModeKubernetes, provider.client.cfg.Mode)
+	assert.Equal(t, AuthModeK8s, provider.client.cfg.Mode)
 	assert.Equal(t, "custom-method", provider.client.cfg.AuthMethod)
 	assert.Equal(t, "custom-audience", provider.client.cfg.Audience)
 	assert.Equal(t, 90*time.Minute, provider.client.cfg.FallbackRecheckInterval)

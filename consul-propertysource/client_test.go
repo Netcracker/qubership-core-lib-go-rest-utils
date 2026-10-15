@@ -97,7 +97,7 @@ func TestClient_Login(t *testing.T) {
 		Address:   testServer.URL,
 		Namespace: "test",
 		Ctx:       context.Background(),
-		Mode:      AuthModeM2M,
+		Mode:      AuthModeLegacy,
 	})
 	assert.Nil(t, client.token)
 	err := client.Login()
@@ -120,7 +120,7 @@ func TestClient_LoginUsesNamespaceAsM2MAuthMethod(t *testing.T) {
 		Address:   testServer.URL,
 		Namespace: "test-namespace",
 		Ctx:       context.Background(),
-		Mode:      AuthModeM2M,
+		Mode:      AuthModeLegacy,
 	})
 
 	err := client.Login()
@@ -141,7 +141,7 @@ func TestClient_LoginError(t *testing.T) {
 		Address:   testServer.URL,
 		Namespace: "test",
 		Ctx:       context.Background(),
-		Mode:      AuthModeM2M,
+		Mode:      AuthModeLegacy,
 	})
 	assert.Nil(t, client.token)
 	err := client.Login()
@@ -175,7 +175,7 @@ func TestClient_LoginEmptyToken(t *testing.T) {
 		Address:   "test:8500",
 		Namespace: "test",
 		Ctx:       context.Background(),
-		Mode:      AuthModeM2M,
+		Mode:      AuthModeLegacy,
 		tokenProvider: func() (string, error) {
 			return "", nil
 		},
@@ -214,7 +214,7 @@ func assertM2MCredentials(t *testing.T, provider tokenProvider, authMethod strin
 func TestClient_TokenProviderPerMode(t *testing.T) {
 	initEnvConfigloader()
 
-	fallbackClient := NewClient(ClientConfig{Namespace: "test-namespace", Ctx: context.Background()})
+	fallbackClient := NewClient(ClientConfig{Namespace: "test-namespace", Ctx: context.Background(), Mode: AuthModeHybrid})
 	assert.NoError(t, fallbackClient.initTokenProvider())
 	fallback, isFallback := fallbackClient.provider.(*fallbackTokenProvider)
 	if assert.True(t, isFallback) {
@@ -228,7 +228,7 @@ func TestClient_TokenProviderPerMode(t *testing.T) {
 	kubernetesClient := NewClient(ClientConfig{
 		Namespace:  "test-namespace",
 		Ctx:        context.Background(),
-		Mode:       AuthModeKubernetes,
+		Mode:       AuthModeK8s,
 		AuthMethod: "k8s-method",
 		Audience:   "k8s-audience",
 	})
@@ -238,7 +238,7 @@ func TestClient_TokenProviderPerMode(t *testing.T) {
 	m2mClient := NewClient(ClientConfig{
 		Namespace: "test-namespace",
 		Ctx:       context.Background(),
-		Mode:      AuthModeM2M,
+		Mode:      AuthModeLegacy,
 	})
 	assert.NoError(t, m2mClient.initTokenProvider())
 	assertM2MCredentials(t, m2mClient.provider, "test-namespace")
@@ -268,7 +268,7 @@ func TestClient_RefreshedTokenReachesSecretId(t *testing.T) {
 		Address:   testServer.URL,
 		Namespace: "test",
 		Ctx:       ctx,
-		Mode:      AuthModeM2M,
+		Mode:      AuthModeLegacy,
 	})
 
 	assert.NoError(t, client.Login())

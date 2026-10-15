@@ -10,9 +10,9 @@ import (
 type AuthMode string
 
 const (
-	AuthModeKubernetesWithM2MFallback AuthMode = "kubernetes-with-m2m-fallback"
-	AuthModeKubernetes                AuthMode = "kubernetes"
-	AuthModeM2M                       AuthMode = "m2m"
+	AuthModeLegacy AuthMode = "legacy"
+	AuthModeHybrid AuthMode = "hybrid"
+	AuthModeK8s    AuthMode = "k8s"
 )
 
 const (
@@ -21,7 +21,7 @@ const (
 	propAuthAudience            = "consul.auth.audience"
 	propFallbackRecheckInterval = "consul.auth.fallback.recheck.interval"
 
-	defaultAuthMode                = AuthModeKubernetesWithM2MFallback
+	defaultAuthMode                = AuthModeLegacy
 	defaultAuthMethod              = "applications-k8s-m2m"
 	defaultAudience                = "netcracker"
 	defaultFallbackRecheckInterval = "5h"
@@ -40,10 +40,10 @@ func resolveAuthConfig(cfg ClientConfig) (authConfig, error) {
 		mode = AuthMode(configloader.GetOrDefaultString(propAuthMode, string(defaultAuthMode)))
 	}
 	switch mode {
-	case AuthModeKubernetesWithM2MFallback, AuthModeKubernetes, AuthModeM2M:
+	case AuthModeLegacy, AuthModeHybrid, AuthModeK8s:
 	default:
 		return authConfig{}, fmt.Errorf("unknown value '%s' of property '%s': expected one of '%s', '%s', '%s'",
-			mode, propAuthMode, AuthModeKubernetesWithM2MFallback, AuthModeKubernetes, AuthModeM2M)
+			mode, propAuthMode, AuthModeLegacy, AuthModeHybrid, AuthModeK8s)
 	}
 
 	authMethod := cfg.AuthMethod
