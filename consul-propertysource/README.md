@@ -88,7 +88,7 @@ The **hybrid** and **k8s** modes need two things in place:
 1. The pod mounts a projected volume with a token of the audience from **consul.auth.audience** under `/var/run/secrets/tokens`.
 2. Consul has an auth method of type `jwt` named as in **consul.auth.method**, whose `BoundAudiences` cover the audience from **consul.auth.audience** and whose binding rules grant the microservice its policies.
 
-Roll out in this order: mount the projected volume, create the auth method with its binding rules, then set **consul.auth.mode** to **hybrid**. Until both are in place, the **hybrid** mode keeps working through the m2m fallback.
+Roll out in this order: mount the projected volume, create the auth method with its binding rules, then set **consul.auth.mode** to **hybrid** or **k8s**. A microservice in the **hybrid** mode keeps working through the m2m fallback while either step is missing, and one in the **k8s** mode fails to log in.
 
 Every successful login writes an INFO record with the name of the auth method that issued the token, so the way in use is visible in the log:
 
