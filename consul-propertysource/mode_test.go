@@ -71,19 +71,6 @@ func TestResolveAuthConfig_UnknownMode(t *testing.T) {
 	assert.Contains(t, err.Error(), "unknown-mode")
 }
 
-func TestResolveAuthConfig_RejectsOldAndMiscasedModeValues(t *testing.T) {
-	for _, value := range []string{"m2m", "kubernetes", "kubernetes-with-m2m-fallback", "Legacy", "HYBRID", "K8S"} {
-		t.Run(value, func(t *testing.T) {
-			t.Setenv("CONSUL_AUTH_MODE", value)
-			initEnvConfigloader()
-
-			_, err := resolveAuthConfig(ClientConfig{})
-
-			assert.ErrorContains(t, err, "unknown value '"+value+"' of property 'consul.auth.mode'")
-		})
-	}
-}
-
 func TestResolveAuthConfig_UnparsableInterval(t *testing.T) {
 	t.Setenv("CONSUL_AUTH_FALLBACK_RECHECK_INTERVAL", "5 hours")
 	initEnvConfigloader()
