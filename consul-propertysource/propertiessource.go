@@ -40,7 +40,7 @@ type ProviderConfig struct {
 	// Setting a value in the Token field disables the mechanism for obtaining a Consul token via anonymous request and instead uses the specified token
 	// nil by default is switches property source to use anonymous request authentication mechanism
 	Token string
-	// Consul ACL token acquisition mode: legacy, hybrid or k8s (default: value from consul.auth.mode)
+	// Consul ACL token acquisition mode: legacy, hybrid or k8s (default: value from consul.auth.mode, then from M2M_AUTH_MODE)
 	Mode AuthMode
 	// Name of the Consul auth method of type jwt (default: value from consul.auth.method)
 	AuthMethod string

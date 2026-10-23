@@ -70,18 +70,20 @@ The property source logs in to Consul and uses the returned ACL token for all fu
 
 | Mode | Behavior |
 |---|---|
-| **legacy** | Logs in with the m2m token only, using the microservice namespace as the auth method name. This is the default. |
+| **legacy** | Logs in with the m2m token only, using the microservice namespace as the auth method name. This is the default when neither **consul.auth.mode** nor `M2M_AUTH_MODE` is set. |
 | **hybrid** | Logs in with the Kubernetes projected volume token. On failure falls back to the m2m token and probes the Kubernetes way again, no more often than **consul.auth.fallback.recheck.interval**. Once a probe succeeds, the fallback is disabled until the microservice restarts. |
 | **k8s** | Logs in with the Kubernetes projected volume token only. A login failure is returned to the caller. |
 
 A probe of the kubernetes way rides on a scheduled relogin, so **consul.auth.fallback.recheck.interval** is a lower bound and not a period. A client that holds a token without an expiration time never relogins, and keeps the way it picked at startup until the microservice restarts.
 
-*  **consul.auth.mode** - way to get the ACL token: **legacy**, **hybrid** or **k8s** (default: **legacy**)
+*  **consul.auth.mode** - way to get the ACL token: **legacy**, **hybrid** or **k8s** (default: the value of the `M2M_AUTH_MODE` environment variable, else **legacy**)
 *  **consul.auth.method** - name of the Consul auth method of type jwt (default: **applications-k8s-m2m**)
 *  **consul.auth.audience** - audience of the Kubernetes projected volume token (default: **netcracker**)
 *  **consul.auth.fallback.recheck.interval** - lower bound on how often the m2m fallback probes the kubernetes way again (default: **5h**)
 
 Each property has a matching field in `ProviderConfig` and `ClientConfig`: `Mode`, `AuthMethod`, `Audience`, and `FallbackRecheckInterval`. A non-empty field wins over the property.
+
+When neither `Mode` nor **consul.auth.mode** is set, the mode is taken from `M2M_AUTH_MODE`, so one variable sets the M2M calls and the Consul login together, and **consul.auth.mode** overrides it for the Consul login alone. An unsupported `M2M_AUTH_MODE` is then an error. Set **consul.auth.mode** to **legacy** to keep the Consul login on the m2m token when `M2M_AUTH_MODE` moves the M2M calls before Consul has the auth method below.
 
 The **hybrid** and **k8s** modes need two things in place:
 
