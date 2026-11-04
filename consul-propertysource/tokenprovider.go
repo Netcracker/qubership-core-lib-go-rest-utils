@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	consulApi "github.com/hashicorp/consul/api"
+	consulApi "github.com/hashicorp/consul/api/v2"
 )
 
 var errConsulLogin = errors.New("failed to log in to Consul")
