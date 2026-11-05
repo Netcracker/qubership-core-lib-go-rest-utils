@@ -164,7 +164,7 @@ func TestResolveAuthConfig_UnparsableInterval(t *testing.T) {
 	assert.Contains(t, err.Error(), "5 hours")
 }
 
-func TestReadAuthMode(t *testing.T) {
+func TestReadAuthSettings_Mode(t *testing.T) {
 	cases := []struct {
 		name           string
 		consulAuthMode string
@@ -182,15 +182,41 @@ func TestReadAuthMode(t *testing.T) {
 			t.Setenv("M2M_AUTH_MODE", tc.m2mAuthMode)
 			initEnvConfigloader()
 
-			mode, err := ReadAuthMode()
+			settings, err := ReadAuthSettings()
 
 			assert.NoError(t, err)
-			assert.Equal(t, tc.want, mode)
+			assert.Equal(t, tc.want, settings.Mode)
 		})
 	}
 }
 
-func TestReadAuthMode_RejectsAnUnsupportedMode(t *testing.T) {
+func TestReadAuthSettings_MethodAndAudience(t *testing.T) {
+	cases := []struct {
+		name         string
+		method       string
+		audience     string
+		wantMethod   string
+		wantAudience string
+	}{
+		{"defaults", "", "", "applications-k8s-m2m", "netcracker"},
+		{"properties", "custom-method", "custom-audience", "custom-method", "custom-audience"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("CONSUL_AUTH_METHOD", tc.method)
+			t.Setenv("CONSUL_AUTH_AUDIENCE", tc.audience)
+			initEnvConfigloader()
+
+			settings, err := ReadAuthSettings()
+
+			assert.NoError(t, err)
+			assert.Equal(t, tc.wantMethod, settings.AuthMethod)
+			assert.Equal(t, tc.wantAudience, settings.Audience)
+		})
+	}
+}
+
+func TestReadAuthSettings_RejectsAnUnsupportedMode(t *testing.T) {
 	cases := []struct {
 		name           string
 		consulAuthMode string
@@ -205,7 +231,7 @@ func TestReadAuthMode_RejectsAnUnsupportedMode(t *testing.T) {
 			t.Setenv("M2M_AUTH_MODE", tc.m2mAuthMode)
 			initEnvConfigloader()
 
-			_, err := ReadAuthMode()
+			_, err := ReadAuthSettings()
 
 			assert.ErrorContains(t, err, "cloud-foundry")
 		})

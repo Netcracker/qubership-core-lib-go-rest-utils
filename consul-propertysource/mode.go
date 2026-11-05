@@ -34,9 +34,29 @@ type authConfig struct {
 	recheckInterval time.Duration
 }
 
-// ReadAuthMode returns the Consul auth mode a [Client] uses when [ClientConfig.Mode] is empty: consul.auth.mode,
-// else M2M_AUTH_MODE, else [AuthModeLegacy]. It returns an error for a mode other than legacy, hybrid, or k8s.
-func ReadAuthMode() (AuthMode, error) {
+// AuthSettings are the login settings a [Client] reads from the configuration when [ClientConfig] leaves them empty.
+type AuthSettings struct {
+	Mode       AuthMode
+	AuthMethod string
+	Audience   string
+}
+
+// ReadAuthSettings returns the settings a [Client] uses when [ClientConfig] leaves them empty. The mode is
+// consul.auth.mode, else M2M_AUTH_MODE, else [AuthModeLegacy]; it returns an error for a mode other than legacy,
+// hybrid, or k8s.
+func ReadAuthSettings() (AuthSettings, error) {
+	mode, err := readAuthMode()
+	if err != nil {
+		return AuthSettings{}, err
+	}
+	return AuthSettings{
+		Mode:       mode,
+		AuthMethod: configloader.GetOrDefaultString(propAuthMethod, defaultAuthMethod),
+		Audience:   configloader.GetOrDefaultString(propAuthAudience, defaultAudience),
+	}, nil
+}
+
+func readAuthMode() (AuthMode, error) {
 	mode := AuthMode(configloader.GetOrDefaultString(propAuthMode, ""))
 	if mode != "" {
 		return mode, validateAuthMode(mode)
@@ -65,7 +85,7 @@ func resolveAuthConfig(cfg ClientConfig) (authConfig, error) {
 	mode := cfg.Mode
 	if mode == "" {
 		var err error
-		if mode, err = ReadAuthMode(); err != nil {
+		if mode, err = readAuthMode(); err != nil {
 			return authConfig{}, err
 		}
 	} else if err := validateAuthMode(mode); err != nil {
