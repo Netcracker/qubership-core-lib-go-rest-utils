@@ -163,3 +163,51 @@ func TestResolveAuthConfig_UnparsableInterval(t *testing.T) {
 	assert.Contains(t, err.Error(), "consul.auth.fallback.recheck.interval")
 	assert.Contains(t, err.Error(), "5 hours")
 }
+
+func TestReadAuthMode(t *testing.T) {
+	cases := []struct {
+		name           string
+		consulAuthMode string
+		m2mAuthMode    string
+		want           AuthMode
+	}{
+		{"the property sets the mode", "hybrid", "", AuthModeHybrid},
+		{"the property overrides M2M_AUTH_MODE", "legacy", "k8s", AuthModeLegacy},
+		{"an empty property takes M2M_AUTH_MODE", "", "k8s", AuthModeK8s},
+		{"neither set means legacy", "", "", AuthModeLegacy},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("CONSUL_AUTH_MODE", tc.consulAuthMode)
+			t.Setenv("M2M_AUTH_MODE", tc.m2mAuthMode)
+			initEnvConfigloader()
+
+			mode, err := ReadAuthMode()
+
+			assert.NoError(t, err)
+			assert.Equal(t, tc.want, mode)
+		})
+	}
+}
+
+func TestReadAuthMode_RejectsAnUnsupportedMode(t *testing.T) {
+	cases := []struct {
+		name           string
+		consulAuthMode string
+		m2mAuthMode    string
+	}{
+		{"unsupported property", "cloud-foundry", "legacy"},
+		{"unsupported M2M_AUTH_MODE with the property unset", "", "cloud-foundry"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("CONSUL_AUTH_MODE", tc.consulAuthMode)
+			t.Setenv("M2M_AUTH_MODE", tc.m2mAuthMode)
+			initEnvConfigloader()
+
+			_, err := ReadAuthMode()
+
+			assert.ErrorContains(t, err, "cloud-foundry")
+		})
+	}
+}

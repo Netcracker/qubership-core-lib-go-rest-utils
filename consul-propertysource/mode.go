@@ -34,26 +34,45 @@ type authConfig struct {
 	recheckInterval time.Duration
 }
 
+// ReadAuthMode returns the Consul auth mode that a [Client] without [ClientConfig.Mode] uses: the property
+// consul.auth.mode, or, when it is empty, M2M_AUTH_MODE as [security.ReadM2MAuthMode] reads it, so an empty
+// M2M_AUTH_MODE means [AuthModeLegacy]. It returns an error when the mode is not legacy, hybrid, or k8s.
+//
+// A service that also talks to Consul without a [Client], and has to follow the same mode, reads it here.
+func ReadAuthMode() (AuthMode, error) {
+	mode := AuthMode(configloader.GetOrDefaultString(propAuthMode, ""))
+	if mode != "" {
+		return mode, validateAuthMode(mode)
+	}
+	// One variable sets the M2M calls and the Consul login together; consul.auth.mode overrides it for the
+	// Consul login alone.
+	m2mMode, err := security.ReadM2MAuthMode()
+	if err != nil {
+		return "", fmt.Errorf("property '%s' is not set, so the consul auth mode is taken from %s: %w",
+			propAuthMode, security.M2MAuthModeEnv, err)
+	}
+	return AuthMode(m2mMode), nil
+}
+
+func validateAuthMode(mode AuthMode) error {
+	switch mode {
+	case AuthModeLegacy, AuthModeHybrid, AuthModeK8s:
+		return nil
+	default:
+		return fmt.Errorf("unknown value '%s' of property '%s': expected one of '%s', '%s', '%s'",
+			mode, propAuthMode, AuthModeLegacy, AuthModeHybrid, AuthModeK8s)
+	}
+}
+
 func resolveAuthConfig(cfg ClientConfig) (authConfig, error) {
 	mode := cfg.Mode
 	if mode == "" {
-		mode = AuthMode(configloader.GetOrDefaultString(propAuthMode, ""))
-	}
-	if mode == "" {
-		// One variable sets the M2M calls and the Consul login together; consul.auth.mode overrides it for the
-		// Consul login alone. An unset M2M_AUTH_MODE is legacy.
-		m2mMode, err := security.ReadM2MAuthMode()
-		if err != nil {
-			return authConfig{}, fmt.Errorf("property '%s' is not set, so the consul auth mode is taken from %s: %w",
-				propAuthMode, security.M2MAuthModeEnv, err)
+		var err error
+		if mode, err = ReadAuthMode(); err != nil {
+			return authConfig{}, err
 		}
-		mode = AuthMode(m2mMode)
-	}
-	switch mode {
-	case AuthModeLegacy, AuthModeHybrid, AuthModeK8s:
-	default:
-		return authConfig{}, fmt.Errorf("unknown value '%s' of property '%s': expected one of '%s', '%s', '%s'",
-			mode, propAuthMode, AuthModeLegacy, AuthModeHybrid, AuthModeK8s)
+	} else if err := validateAuthMode(mode); err != nil {
+		return authConfig{}, err
 	}
 
 	authMethod := cfg.AuthMethod
