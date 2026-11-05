@@ -34,11 +34,8 @@ type authConfig struct {
 	recheckInterval time.Duration
 }
 
-// ReadAuthMode returns the Consul auth mode that a [Client] without [ClientConfig.Mode] uses: the property
-// consul.auth.mode, or, when it is empty, M2M_AUTH_MODE as [security.ReadM2MAuthMode] reads it, so an empty
-// M2M_AUTH_MODE means [AuthModeLegacy]. It returns an error when the mode is not legacy, hybrid, or k8s.
-//
-// A service that also talks to Consul without a [Client], and has to follow the same mode, reads it here.
+// ReadAuthMode returns the Consul auth mode a [Client] uses when [ClientConfig.Mode] is empty: consul.auth.mode,
+// else M2M_AUTH_MODE, else [AuthModeLegacy]. It returns an error for a mode other than legacy, hybrid, or k8s.
 func ReadAuthMode() (AuthMode, error) {
 	mode := AuthMode(configloader.GetOrDefaultString(propAuthMode, ""))
 	if mode != "" {
