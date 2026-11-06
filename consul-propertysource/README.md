@@ -85,6 +85,8 @@ Each property has a matching field in `ProviderConfig` and `ClientConfig`: `Mode
 
 When neither `Mode` nor **consul.auth.mode** is set, the mode is taken from `M2M_AUTH_MODE`, so one variable sets the M2M calls and the Consul login together, and **consul.auth.mode** overrides it for the Consul login alone. An unsupported `M2M_AUTH_MODE` is then an error. Set **consul.auth.mode** to **legacy** to keep the Consul login on the m2m token when `M2M_AUTH_MODE` moves the M2M calls before Consul has the auth method below.
 
+`ReadAuthSettings()` returns the settings resolved this way, for code that talks to Consul without the property source.
+
 The **hybrid** and **k8s** modes need two things in place:
 
 1. The pod mounts a projected volume with a token of the audience from **consul.auth.audience** under `/var/run/secrets/tokens`.
