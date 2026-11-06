@@ -107,12 +107,17 @@ func (r *Client) initTokenProvider() error {
 	if r.configErr != nil {
 		return r.configErr
 	}
-	authCfg, err := resolveAuthConfig(r.cfg)
+	settings, err := resolveAuthSettings(AuthSettings{
+		Mode:                    r.cfg.Mode,
+		AuthMethod:              r.cfg.AuthMethod,
+		Audience:                r.cfg.Audience,
+		FallbackRecheckInterval: r.cfg.FallbackRecheckInterval,
+	})
 	if err != nil {
 		r.configErr = err
 		return err
 	}
-	r.provider = r.newTokenProvider(authCfg)
+	r.provider = r.newTokenProvider(settings)
 	r.updater = &tokenUpdater{
 		provider: r.provider,
 		apply:    r.applyToken,
@@ -121,27 +126,27 @@ func (r *Client) initTokenProvider() error {
 	return nil
 }
 
-func (r *Client) newTokenProvider(authCfg authConfig) tokenProvider {
-	switch authCfg.mode {
+func (r *Client) newTokenProvider(settings AuthSettings) tokenProvider {
+	switch settings.Mode {
 	case AuthModeLegacy:
 		return r.m2mTokenProvider()
 	case AuthModeK8s:
-		return r.kubernetesTokenProvider(authCfg)
+		return r.kubernetesTokenProvider(settings)
 	default:
 		return &fallbackTokenProvider{
-			primary:             r.kubernetesTokenProvider(authCfg),
+			primary:             r.kubernetesTokenProvider(settings),
 			secondary:           r.m2mTokenProvider(),
-			primaryAuthMethod:   authCfg.authMethod,
+			primaryAuthMethod:   settings.AuthMethod,
 			secondaryAuthMethod: r.cfg.Namespace,
-			interval:            authCfg.recheckInterval,
+			interval:            settings.FallbackRecheckInterval,
 			now:                 time.Now,
 		}
 	}
 }
 
-func (r *Client) kubernetesTokenProvider(authCfg authConfig) tokenProvider {
+func (r *Client) kubernetesTokenProvider(settings AuthSettings) tokenProvider {
 	return &loginTokenProvider{
-		credentials: kubernetesCredentials{authMethod: authCfg.authMethod, audience: authCfg.audience},
+		credentials: kubernetesCredentials{authMethod: settings.AuthMethod, audience: settings.Audience},
 		acl:         r.acl,
 	}
 }
