@@ -27,7 +27,7 @@ const (
 	defaultFallbackRecheckInterval = "5h"
 )
 
-// AuthSettings are the settings a [Client] logs in to Consul with.
+// AuthSettings are the settings of the Consul login.
 type AuthSettings struct {
 	Mode                    AuthMode
 	AuthMethod              string
@@ -35,53 +35,59 @@ type AuthSettings struct {
 	FallbackRecheckInterval time.Duration
 }
 
-// ReadAuthSettings reads the settings a [Client] logs in with when its [ClientConfig] sets none of them. The mode
-// comes from consul.auth.mode, else M2M_AUTH_MODE, else [AuthModeLegacy]. The auth method, the audience, and the
-// fallback recheck interval come from consul.auth.method, consul.auth.audience, and
-// consul.auth.fallback.recheck.interval, by default applications-k8s-m2m, netcracker, and 5h. It returns an error
-// for a mode other than legacy, hybrid, or k8s, and for an interval that does not parse.
+// ReadAuthSettings reads the Consul login settings from the consul.auth.* properties and M2M_AUTH_MODE, as the
+// property source does. It returns an error for an unsupported mode or an interval that does not parse.
 func ReadAuthSettings() (AuthSettings, error) {
-	return resolveAuthSettings(AuthSettings{})
+	return resolveAuthConfig(ClientConfig{})
 }
 
-// resolveAuthSettings takes each setting from explicit where it is set and from the configuration otherwise.
-func resolveAuthSettings(explicit AuthSettings) (AuthSettings, error) {
-	settings := explicit
-
-	if settings.Mode == "" {
-		settings.Mode = AuthMode(configloader.GetOrDefaultString(propAuthMode, ""))
+func resolveAuthConfig(cfg ClientConfig) (AuthSettings, error) {
+	mode := cfg.Mode
+	if mode == "" {
+		mode = AuthMode(configloader.GetOrDefaultString(propAuthMode, ""))
 	}
-	if settings.Mode == "" {
+	if mode == "" {
 		// One variable sets the M2M calls and the Consul login together; consul.auth.mode overrides it for the
-		// Consul login alone.
+		// Consul login alone. An unset M2M_AUTH_MODE is legacy.
 		m2mMode, err := security.ReadM2MAuthMode()
 		if err != nil {
 			return AuthSettings{}, fmt.Errorf("property '%s' is not set, so the consul auth mode is taken from %s: %w",
 				propAuthMode, security.M2MAuthModeEnv, err)
 		}
-		settings.Mode = AuthMode(m2mMode)
+		mode = AuthMode(m2mMode)
 	}
-	switch settings.Mode {
+	switch mode {
 	case AuthModeLegacy, AuthModeHybrid, AuthModeK8s:
 	default:
 		return AuthSettings{}, fmt.Errorf("unknown value '%s' of property '%s': expected one of '%s', '%s', '%s'",
-			settings.Mode, propAuthMode, AuthModeLegacy, AuthModeHybrid, AuthModeK8s)
+			mode, propAuthMode, AuthModeLegacy, AuthModeHybrid, AuthModeK8s)
 	}
 
-	if settings.AuthMethod == "" {
-		settings.AuthMethod = configloader.GetOrDefaultString(propAuthMethod, defaultAuthMethod)
+	authMethod := cfg.AuthMethod
+	if authMethod == "" {
+		authMethod = configloader.GetOrDefaultString(propAuthMethod, defaultAuthMethod)
 	}
-	if settings.Audience == "" {
-		settings.Audience = configloader.GetOrDefaultString(propAuthAudience, defaultAudience)
+
+	audience := cfg.Audience
+	if audience == "" {
+		audience = configloader.GetOrDefaultString(propAuthAudience, defaultAudience)
 	}
-	if settings.FallbackRecheckInterval == 0 {
+
+	recheckInterval := cfg.FallbackRecheckInterval
+	if recheckInterval == 0 {
 		rawInterval := configloader.GetOrDefaultString(propFallbackRecheckInterval, defaultFallbackRecheckInterval)
-		interval, err := time.ParseDuration(rawInterval)
+		parsedInterval, err := time.ParseDuration(rawInterval)
 		if err != nil {
 			return AuthSettings{}, fmt.Errorf("failed to parse value '%s' of property '%s': %w",
 				rawInterval, propFallbackRecheckInterval, err)
 		}
-		settings.FallbackRecheckInterval = interval
+		recheckInterval = parsedInterval
 	}
-	return settings, nil
+
+	return AuthSettings{
+		Mode:                    mode,
+		AuthMethod:              authMethod,
+		Audience:                audience,
+		FallbackRecheckInterval: recheckInterval,
+	}, nil
 }
