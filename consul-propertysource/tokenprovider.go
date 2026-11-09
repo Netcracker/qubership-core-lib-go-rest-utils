@@ -4,12 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	consulApi "github.com/hashicorp/consul/api"
 )
 
 var errConsulLogin = errors.New("failed to log in to Consul")
+
+const consulACLDisabledMessage = "ACL support disabled"
 
 type consulToken struct {
 	secretID       string
@@ -40,6 +43,10 @@ func (p *loginTokenProvider) GetToken(ctx context.Context) (*consulToken, error)
 		AuthMethod:  authMethod,
 		BearerToken: bearer,
 	}, nil)
+	if isConsulACLDisabled(err) {
+		logger.InfoC(ctx, "Consul ACLs are disabled: working without a Consul token")
+		return &consulToken{}, nil
+	}
 	if err != nil {
 		return nil, fmt.Errorf("%w with auth method '%s': %w", errConsulLogin, authMethod, err)
 	}
@@ -49,4 +56,11 @@ func (p *loginTokenProvider) GetToken(ctx context.Context) (*consulToken, error)
 		expirationTime: aclToken.ExpirationTime,
 		authMethod:     aclToken.AuthMethod,
 	}, nil
+}
+
+func isConsulACLDisabled(err error) bool {
+	var statusErr consulApi.StatusError
+	return errors.As(err, &statusErr) &&
+		statusErr.Code == http.StatusUnauthorized &&
+		statusErr.Body == consulACLDisabledMessage
 }
