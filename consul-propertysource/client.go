@@ -121,8 +121,8 @@ func (r *Client) initTokenProvider() error {
 	return nil
 }
 
-func (r *Client) newTokenProvider(authCfg authConfig) tokenProvider {
-	switch authCfg.mode {
+func (r *Client) newTokenProvider(authCfg AuthSettings) tokenProvider {
+	switch authCfg.Mode {
 	case AuthModeLegacy:
 		return r.m2mTokenProvider()
 	case AuthModeK8s:
@@ -131,17 +131,17 @@ func (r *Client) newTokenProvider(authCfg authConfig) tokenProvider {
 		return &fallbackTokenProvider{
 			primary:             r.kubernetesTokenProvider(authCfg),
 			secondary:           r.m2mTokenProvider(),
-			primaryAuthMethod:   authCfg.authMethod,
+			primaryAuthMethod:   authCfg.AuthMethod,
 			secondaryAuthMethod: r.cfg.Namespace,
-			interval:            authCfg.recheckInterval,
+			interval:            authCfg.FallbackRecheckInterval,
 			now:                 time.Now,
 		}
 	}
 }
 
-func (r *Client) kubernetesTokenProvider(authCfg authConfig) tokenProvider {
+func (r *Client) kubernetesTokenProvider(authCfg AuthSettings) tokenProvider {
 	return &loginTokenProvider{
-		credentials: kubernetesCredentials{authMethod: authCfg.authMethod, audience: authCfg.audience},
+		credentials: kubernetesCredentials{authMethod: authCfg.AuthMethod, audience: authCfg.Audience},
 		acl:         r.acl,
 	}
 }

@@ -27,10 +27,10 @@ func TestResolveAuthConfig_Defaults(t *testing.T) {
 	cfg, err := resolveAuthConfig(ClientConfig{})
 
 	assert.NoError(t, err)
-	assert.Equal(t, AuthModeLegacy, cfg.mode)
-	assert.Equal(t, "applications-k8s-m2m", cfg.authMethod)
-	assert.Equal(t, "netcracker", cfg.audience)
-	assert.Equal(t, 5*time.Hour, cfg.recheckInterval)
+	assert.Equal(t, AuthModeLegacy, cfg.Mode)
+	assert.Equal(t, "applications-k8s-m2m", cfg.AuthMethod)
+	assert.Equal(t, "netcracker", cfg.Audience)
+	assert.Equal(t, 5*time.Hour, cfg.FallbackRecheckInterval)
 }
 
 func TestResolveAuthConfig_PropertyOverridesDefault(t *testing.T) {
@@ -43,10 +43,10 @@ func TestResolveAuthConfig_PropertyOverridesDefault(t *testing.T) {
 	cfg, err := resolveAuthConfig(ClientConfig{})
 
 	assert.NoError(t, err)
-	assert.Equal(t, AuthModeK8s, cfg.mode)
-	assert.Equal(t, "property-method", cfg.authMethod)
-	assert.Equal(t, "property-audience", cfg.audience)
-	assert.Equal(t, 30*time.Minute, cfg.recheckInterval)
+	assert.Equal(t, AuthModeK8s, cfg.Mode)
+	assert.Equal(t, "property-method", cfg.AuthMethod)
+	assert.Equal(t, "property-audience", cfg.Audience)
+	assert.Equal(t, 30*time.Minute, cfg.FallbackRecheckInterval)
 }
 
 func TestResolveAuthConfig_FieldOverridesProperty(t *testing.T) {
@@ -64,10 +64,10 @@ func TestResolveAuthConfig_FieldOverridesProperty(t *testing.T) {
 	})
 
 	assert.NoError(t, err)
-	assert.Equal(t, AuthModeLegacy, cfg.mode)
-	assert.Equal(t, "field-method", cfg.authMethod)
-	assert.Equal(t, "field-audience", cfg.audience)
-	assert.Equal(t, time.Minute, cfg.recheckInterval)
+	assert.Equal(t, AuthModeLegacy, cfg.Mode)
+	assert.Equal(t, "field-method", cfg.AuthMethod)
+	assert.Equal(t, "field-audience", cfg.Audience)
+	assert.Equal(t, time.Minute, cfg.FallbackRecheckInterval)
 }
 
 func TestResolveAuthConfig_ModeTakenFromM2MAuthMode(t *testing.T) {
@@ -83,7 +83,7 @@ func TestResolveAuthConfig_ModeTakenFromM2MAuthMode(t *testing.T) {
 			cfg, err := resolveAuthConfig(ClientConfig{})
 
 			assert.NoError(t, err)
-			assert.Equal(t, expected, cfg.mode)
+			assert.Equal(t, expected, cfg.Mode)
 		})
 	}
 }
@@ -96,7 +96,7 @@ func TestResolveAuthConfig_EmptyPropertyTakesM2MAuthMode(t *testing.T) {
 	cfg, err := resolveAuthConfig(ClientConfig{})
 
 	assert.NoError(t, err)
-	assert.Equal(t, AuthModeHybrid, cfg.mode)
+	assert.Equal(t, AuthModeHybrid, cfg.Mode)
 }
 
 func TestResolveAuthConfig_PropertyOverridesM2MAuthMode(t *testing.T) {
@@ -107,7 +107,7 @@ func TestResolveAuthConfig_PropertyOverridesM2MAuthMode(t *testing.T) {
 	cfg, err := resolveAuthConfig(ClientConfig{})
 
 	assert.NoError(t, err)
-	assert.Equal(t, AuthModeLegacy, cfg.mode)
+	assert.Equal(t, AuthModeLegacy, cfg.Mode)
 }
 
 func TestResolveAuthConfig_FieldOverridesM2MAuthMode(t *testing.T) {
@@ -117,7 +117,7 @@ func TestResolveAuthConfig_FieldOverridesM2MAuthMode(t *testing.T) {
 	cfg, err := resolveAuthConfig(ClientConfig{Mode: AuthModeHybrid})
 
 	assert.NoError(t, err)
-	assert.Equal(t, AuthModeHybrid, cfg.mode)
+	assert.Equal(t, AuthModeHybrid, cfg.Mode)
 }
 
 func TestResolveAuthConfig_UnsupportedM2MAuthMode(t *testing.T) {
@@ -140,7 +140,7 @@ func TestResolveAuthConfig_UnsupportedM2MAuthModeIgnoredWhenPropertyIsSet(t *tes
 	cfg, err := resolveAuthConfig(ClientConfig{})
 
 	assert.NoError(t, err)
-	assert.Equal(t, AuthModeK8s, cfg.mode)
+	assert.Equal(t, AuthModeK8s, cfg.Mode)
 }
 
 func TestResolveAuthConfig_UnknownMode(t *testing.T) {
@@ -162,4 +162,22 @@ func TestResolveAuthConfig_UnparsableInterval(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "consul.auth.fallback.recheck.interval")
 	assert.Contains(t, err.Error(), "5 hours")
+}
+
+func TestReadAuthSettings_ReadsTheConfiguration(t *testing.T) {
+	t.Setenv("CONSUL_AUTH_MODE", "hybrid")
+	t.Setenv("CONSUL_AUTH_METHOD", "property-method")
+	t.Setenv("CONSUL_AUTH_AUDIENCE", "property-audience")
+	t.Setenv("CONSUL_AUTH_FALLBACK_RECHECK_INTERVAL", "30m")
+	initEnvConfigloader()
+
+	settings, err := ReadAuthSettings()
+
+	assert.NoError(t, err)
+	assert.Equal(t, AuthSettings{
+		Mode:                    AuthModeHybrid,
+		AuthMethod:              "property-method",
+		Audience:                "property-audience",
+		FallbackRecheckInterval: 30 * time.Minute,
+	}, settings)
 }
