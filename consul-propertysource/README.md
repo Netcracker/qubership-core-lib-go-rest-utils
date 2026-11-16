@@ -83,7 +83,7 @@ A probe of the kubernetes way rides on a scheduled relogin, so **consul.auth.fal
 
 Each property has a matching field in `ProviderConfig` and `ClientConfig`: `Mode`, `AuthMethod`, `Audience`, and `FallbackRecheckInterval`. A non-empty field wins over the property.
 
-When neither `Mode` nor **consul.auth.mode** is set, the mode is taken from `M2M_AUTH_MODE`, so one variable sets the M2M calls and the Consul login together, and **consul.auth.mode** overrides it for the Consul login alone. An unsupported `M2M_AUTH_MODE` is then an error. Set **consul.auth.mode** to **legacy** to keep the Consul login on the m2m token when `M2M_AUTH_MODE` moves the M2M calls before Consul has the auth method below.
+When neither `Mode` nor **consul.auth.mode** is set, the mode is taken from `M2M_AUTH_MODE`, so one variable sets the M2M calls and the Consul login together, and **consul.auth.mode** overrides it for the Consul login alone. An unsupported `M2M_AUTH_MODE` is then an error. Set **consul.auth.mode** only to test the Consul login. `M2M_AUTH_MODE=k8s` together with **consul.auth.mode** set to **legacy** is not supported. Until Consul has the auth method below, use **hybrid**: it falls back to the m2m token.
 
 `ReadAuthSettings()` returns the settings resolved this way, for code that talks to Consul without the property source.
 
@@ -92,7 +92,7 @@ The **hybrid** and **k8s** modes need two things in place:
 1. The pod mounts a projected volume with a token of the audience from **consul.auth.audience** under `/var/run/secrets/tokens`.
 2. Consul has an auth method of type `jwt` named as in **consul.auth.method**, whose `BoundAudiences` cover the audience from **consul.auth.audience** and whose binding rules grant the microservice its policies.
 
-Roll out in this order: mount the projected volume, create the auth method with its binding rules, then set **consul.auth.mode** to **hybrid** or **k8s**. A microservice in the **hybrid** mode keeps working through the m2m fallback while either step is missing, and one in the **k8s** mode fails to log in.
+Roll out in this order: mount the projected volume, create the auth method with its binding rules, then set `M2M_AUTH_MODE` to **hybrid** or **k8s**. A microservice in the **hybrid** mode keeps working through the m2m fallback while either step is missing, and one in the **k8s** mode fails to log in.
 
 A Consul with its ACL system disabled answers the login with `401` and the body `ACL support disabled`. In every mode the client then works without a token and logs `Consul ACLs are disabled: working without a Consul token`.
 
