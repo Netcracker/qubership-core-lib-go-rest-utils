@@ -10,6 +10,7 @@ import (
 
 	consulApi "github.com/hashicorp/consul/api"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type stubCredentials struct {
@@ -95,6 +96,61 @@ func TestLoginTokenProvider_GetTokenForbidden(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, statusError.Code)
 	assert.Contains(t, err.Error(), "k8s-method")
 	assert.ErrorIs(t, err, errConsulLogin)
+}
+
+func TestLoginTokenProvider_GetTokenWhenConsulACLsAreDisabled(t *testing.T) {
+	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(http.StatusUnauthorized)
+		res.Write([]byte("ACL support disabled"))
+	}))
+	defer testServer.Close()
+
+	provider := &loginTokenProvider{
+		credentials: stubCredentials{authMethod: "k8s-method", token: "bearer"},
+		acl:         aclOf(testServer.URL),
+	}
+
+	var token *consulToken
+	var err error
+	out := captureStdout(t, func() {
+		token, err = provider.GetToken(context.Background())
+	})
+
+	require.NoError(t, err)
+	assert.Empty(t, token.secretID)
+	assert.Nil(t, token.expirationTime)
+	assert.Contains(t, out, "Consul ACLs are disabled: working without a Consul token")
+}
+
+func TestLoginTokenProvider_GetTokenErrorThatOnlyResemblesDisabledACLs(t *testing.T) {
+	cases := []struct {
+		name   string
+		status int
+		body   string
+	}{
+		{"401 with another body", http.StatusUnauthorized, "ACL not found"},
+		{"401 whose body contains the disabled ACLs text among other words", http.StatusUnauthorized, "Permission denied: ACL support disabled for this token"},
+		{"the disabled ACLs text with another status", http.StatusForbidden, "ACL support disabled"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+				res.WriteHeader(tc.status)
+				res.Write([]byte(tc.body))
+			}))
+			defer testServer.Close()
+
+			provider := &loginTokenProvider{
+				credentials: stubCredentials{authMethod: "k8s-method", token: "bearer"},
+				acl:         aclOf(testServer.URL),
+			}
+
+			token, err := provider.GetToken(context.Background())
+
+			assert.Nil(t, token)
+			assert.ErrorIs(t, err, errConsulLogin)
+		})
+	}
 }
 
 func TestLoginTokenProvider_GetTokenCredentialsError(t *testing.T) {
