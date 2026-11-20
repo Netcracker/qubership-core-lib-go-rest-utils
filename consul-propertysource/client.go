@@ -166,7 +166,15 @@ func (r *Client) applyToken(token *consulToken) {
 	r.token.val.Store(token.secretID)
 }
 
+// SecretId returns the ACL token the client sends to Consul: the configured [ClientConfig.Token], or the token of the
+// last successful login or refresh. It returns an empty string until [Client.Login] succeeds when no token is configured.
 func (r *Client) SecretId() string {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	if r.token == nil {
+		return ""
+	}
 	tokenValue, _ := r.token.val.Load().(string)
 	return tokenValue
 }
