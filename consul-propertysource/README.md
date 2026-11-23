@@ -85,7 +85,7 @@ Each property has a matching field in `ProviderConfig` and `ClientConfig`: `Mode
 
 When neither `Mode` nor **consul.auth.mode** is set, the mode is taken from `M2M_AUTH_MODE`, so one variable sets the M2M calls and the Consul login together, and **consul.auth.mode** overrides it for the Consul login alone. An unsupported `M2M_AUTH_MODE` is then an error. Set **consul.auth.mode** only to test the Consul login. `M2M_AUTH_MODE=k8s` together with **consul.auth.mode** set to **legacy** is not supported. Until Consul has the auth method below, use **hybrid**: it falls back to the m2m token.
 
-`ReadAuthSettings()` returns the settings resolved this way, for code that talks to Consul without the property source.
+`ReadAuthSettings()` returns the settings resolved this way, for code that talks to Consul without the property source. Call it after `configloader.Init`: before that it returns an error.
 
 The **hybrid** and **k8s** modes need two things in place:
 

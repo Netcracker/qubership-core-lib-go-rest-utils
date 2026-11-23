@@ -79,11 +79,13 @@ func (r *Client) Login() error {
 	if err != nil {
 		return err
 	}
-	authMethod := token.authMethod
-	if authMethod == "" {
-		authMethod = "unknown"
+	if token.secretID != "" {
+		authMethod := token.authMethod
+		if authMethod == "" {
+			authMethod = "unknown"
+		}
+		logger.InfoC(r.cfg.Ctx, "Logged in to Consul with auth method '%s'", authMethod)
 	}
-	logger.InfoC(r.cfg.Ctx, "Logged in to Consul with auth method '%s'", authMethod)
 
 	r.consul = newConsulApiClient(r.cfg.Address, token.secretID)
 	r.token = &ClientToken{}

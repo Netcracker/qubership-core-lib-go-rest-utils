@@ -36,9 +36,12 @@ type AuthSettings struct {
 }
 
 // ReadAuthSettings reads the Consul login settings from the consul.auth.* properties and M2M_AUTH_MODE, as the
-// property source does. It reads through configloader, so it returns the defaults until configloader is initialized.
-// It returns an error for an unsupported mode or an interval that does not parse.
+// property source does. Before configloader.Init it returns an error wrapping [configloader.ErrNotInitialized]. It also
+// returns an error for an unsupported mode or an interval that does not parse.
 func ReadAuthSettings() (AuthSettings, error) {
+	if !configloader.IsConfigLoaderInited() {
+		return AuthSettings{}, fmt.Errorf("cannot read the Consul auth settings: %w", configloader.ErrNotInitialized)
+	}
 	return resolveAuthConfig(ClientConfig{})
 }
 
