@@ -94,7 +94,7 @@ The **hybrid** and **k8s** modes need two things in place:
 
 Roll out in this order: mount the projected volume, create the auth method with its binding rules, then set `M2M_AUTH_MODE` to **hybrid** or **k8s**. A microservice in the **hybrid** mode keeps working through the m2m fallback while either step is missing, and one in the **k8s** mode fails to log in.
 
-A Consul with its ACL system disabled answers the login with `401` and the body `ACL support disabled`. In every mode the client then works without a token and logs `Consul ACLs are disabled: working without a Consul token`.
+A Consul with its ACL system disabled answers the login with `401` and the body `ACL support disabled`. In every mode the client then works without a token and logs `Consul ACLs are disabled: working without a Consul token`. `IsACLDisabled(statusCode, body)` reports whether a response is that one, for code that calls the Consul HTTP API itself.
 
 Every successful login writes an INFO record with the name of the auth method that issued the token, so the way in use is visible in the log:
 
