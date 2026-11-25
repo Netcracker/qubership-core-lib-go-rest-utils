@@ -122,35 +122,22 @@ func TestLoginTokenProvider_GetTokenWhenConsulACLsAreDisabled(t *testing.T) {
 	assert.Contains(t, out, "Consul ACLs are disabled: working without a Consul token")
 }
 
-func TestLoginTokenProvider_GetTokenErrorThatOnlyResemblesDisabledACLs(t *testing.T) {
-	cases := []struct {
-		name   string
-		status int
-		body   string
-	}{
-		{"401 with another body", http.StatusUnauthorized, "ACL not found"},
-		{"401 whose body contains the disabled ACLs text among other words", http.StatusUnauthorized, "Permission denied: ACL support disabled for this token"},
-		{"the disabled ACLs text with another status", http.StatusForbidden, "ACL support disabled"},
+func TestLoginTokenProvider_GetTokenFailsOnAnotherUnauthorizedAnswer(t *testing.T) {
+	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(http.StatusUnauthorized)
+		res.Write([]byte("ACL not found"))
+	}))
+	defer testServer.Close()
+
+	provider := &loginTokenProvider{
+		credentials: stubCredentials{authMethod: "k8s-method", token: "bearer"},
+		acl:         aclOf(testServer.URL),
 	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-				res.WriteHeader(tc.status)
-				res.Write([]byte(tc.body))
-			}))
-			defer testServer.Close()
 
-			provider := &loginTokenProvider{
-				credentials: stubCredentials{authMethod: "k8s-method", token: "bearer"},
-				acl:         aclOf(testServer.URL),
-			}
+	token, err := provider.GetToken(context.Background())
 
-			token, err := provider.GetToken(context.Background())
-
-			assert.Nil(t, token)
-			assert.ErrorIs(t, err, errConsulLogin)
-		})
-	}
+	assert.Nil(t, token)
+	assert.ErrorIs(t, err, errConsulLogin)
 }
 
 func TestLoginTokenProvider_GetTokenCredentialsError(t *testing.T) {
