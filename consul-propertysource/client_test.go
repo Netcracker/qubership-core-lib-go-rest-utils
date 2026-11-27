@@ -151,6 +151,43 @@ func TestClient_LoginError(t *testing.T) {
 	assert.Contains(t, err.Error(), "Permission denied")
 }
 
+func TestClient_LoginWhenConsulACLsAreDisabled(t *testing.T) {
+	initEnvConfigloader()
+	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(http.StatusUnauthorized)
+		res.Write([]byte("ACL support disabled"))
+	}))
+	defer func() { testServer.Close() }()
+	client := NewClient(ClientConfig{
+		Address:   testServer.URL,
+		Namespace: "test",
+		Ctx:       context.Background(),
+		Mode:      AuthModeLegacy,
+	})
+
+	assert.NoError(t, client.Login())
+	assert.Equal(t, "", client.SecretId())
+}
+
+// A SecretId call that comes before any successful login used to panic with a nil pointer dereference.
+func TestClient_SecretIdIsEmptyAfterRefusedLogin(t *testing.T) {
+	initEnvConfigloader()
+	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(http.StatusForbidden)
+		res.Write([]byte("Permission denied"))
+	}))
+	defer func() { testServer.Close() }()
+	client := NewClient(ClientConfig{
+		Address:   testServer.URL,
+		Namespace: "test",
+		Ctx:       context.Background(),
+		Mode:      AuthModeLegacy,
+	})
+	assert.Error(t, client.Login())
+
+	assert.Equal(t, "", client.SecretId())
+}
+
 func TestClient_LoginConfigError(t *testing.T) {
 	initEnvConfigloader()
 	client := NewClient(ClientConfig{

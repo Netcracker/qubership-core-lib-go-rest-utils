@@ -27,14 +27,25 @@ const (
 	defaultFallbackRecheckInterval = "5h"
 )
 
-type authConfig struct {
-	mode            AuthMode
-	authMethod      string
-	audience        string
-	recheckInterval time.Duration
+// AuthSettings are the settings of the Consul login.
+type AuthSettings struct {
+	Mode                    AuthMode
+	AuthMethod              string
+	Audience                string
+	FallbackRecheckInterval time.Duration
 }
 
-func resolveAuthConfig(cfg ClientConfig) (authConfig, error) {
+// ReadAuthSettings reads the Consul login settings from the consul.auth.* properties and M2M_AUTH_MODE, as the
+// property source does. Before configloader.Init it returns an error wrapping [configloader.ErrNotInitialized]. It also
+// returns an error for an unsupported mode or an interval that does not parse.
+func ReadAuthSettings() (AuthSettings, error) {
+	if !configloader.IsConfigLoaderInited() {
+		return AuthSettings{}, fmt.Errorf("cannot read the Consul auth settings: %w", configloader.ErrNotInitialized)
+	}
+	return resolveAuthConfig(ClientConfig{})
+}
+
+func resolveAuthConfig(cfg ClientConfig) (AuthSettings, error) {
 	mode := cfg.Mode
 	if mode == "" {
 		mode = AuthMode(configloader.GetOrDefaultString(propAuthMode, ""))
@@ -44,7 +55,7 @@ func resolveAuthConfig(cfg ClientConfig) (authConfig, error) {
 		// Consul login alone. An unset M2M_AUTH_MODE is legacy.
 		m2mMode, err := security.ReadM2MAuthMode()
 		if err != nil {
-			return authConfig{}, fmt.Errorf("property '%s' is not set, so the consul auth mode is taken from %s: %w",
+			return AuthSettings{}, fmt.Errorf("property '%s' is not set, so the consul auth mode is taken from %s: %w",
 				propAuthMode, security.M2MAuthModeEnv, err)
 		}
 		mode = AuthMode(m2mMode)
@@ -52,7 +63,7 @@ func resolveAuthConfig(cfg ClientConfig) (authConfig, error) {
 	switch mode {
 	case AuthModeLegacy, AuthModeHybrid, AuthModeK8s:
 	default:
-		return authConfig{}, fmt.Errorf("unknown value '%s' of property '%s': expected one of '%s', '%s', '%s'",
+		return AuthSettings{}, fmt.Errorf("unknown value '%s' of property '%s': expected one of '%s', '%s', '%s'",
 			mode, propAuthMode, AuthModeLegacy, AuthModeHybrid, AuthModeK8s)
 	}
 
@@ -71,16 +82,16 @@ func resolveAuthConfig(cfg ClientConfig) (authConfig, error) {
 		rawInterval := configloader.GetOrDefaultString(propFallbackRecheckInterval, defaultFallbackRecheckInterval)
 		parsedInterval, err := time.ParseDuration(rawInterval)
 		if err != nil {
-			return authConfig{}, fmt.Errorf("failed to parse value '%s' of property '%s': %w",
+			return AuthSettings{}, fmt.Errorf("failed to parse value '%s' of property '%s': %w",
 				rawInterval, propFallbackRecheckInterval, err)
 		}
 		recheckInterval = parsedInterval
 	}
 
-	return authConfig{
-		mode:            mode,
-		authMethod:      authMethod,
-		audience:        audience,
-		recheckInterval: recheckInterval,
+	return AuthSettings{
+		Mode:                    mode,
+		AuthMethod:              authMethod,
+		Audience:                audience,
+		FallbackRecheckInterval: recheckInterval,
 	}, nil
 }

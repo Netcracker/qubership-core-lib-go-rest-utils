@@ -79,11 +79,13 @@ func (r *Client) Login() error {
 	if err != nil {
 		return err
 	}
-	authMethod := token.authMethod
-	if authMethod == "" {
-		authMethod = "unknown"
+	if token.secretID != "" {
+		authMethod := token.authMethod
+		if authMethod == "" {
+			authMethod = "unknown"
+		}
+		logger.InfoC(r.cfg.Ctx, "Logged in to Consul with auth method '%s'", authMethod)
 	}
-	logger.InfoC(r.cfg.Ctx, "Logged in to Consul with auth method '%s'", authMethod)
 
 	r.consul = newConsulApiClient(r.cfg.Address, token.secretID)
 	r.token = &ClientToken{}
@@ -121,8 +123,8 @@ func (r *Client) initTokenProvider() error {
 	return nil
 }
 
-func (r *Client) newTokenProvider(authCfg authConfig) tokenProvider {
-	switch authCfg.mode {
+func (r *Client) newTokenProvider(authCfg AuthSettings) tokenProvider {
+	switch authCfg.Mode {
 	case AuthModeLegacy:
 		return r.m2mTokenProvider()
 	case AuthModeK8s:
@@ -131,17 +133,17 @@ func (r *Client) newTokenProvider(authCfg authConfig) tokenProvider {
 		return &fallbackTokenProvider{
 			primary:             r.kubernetesTokenProvider(authCfg),
 			secondary:           r.m2mTokenProvider(),
-			primaryAuthMethod:   authCfg.authMethod,
+			primaryAuthMethod:   authCfg.AuthMethod,
 			secondaryAuthMethod: r.cfg.Namespace,
-			interval:            authCfg.recheckInterval,
+			interval:            authCfg.FallbackRecheckInterval,
 			now:                 time.Now,
 		}
 	}
 }
 
-func (r *Client) kubernetesTokenProvider(authCfg authConfig) tokenProvider {
+func (r *Client) kubernetesTokenProvider(authCfg AuthSettings) tokenProvider {
 	return &loginTokenProvider{
-		credentials: kubernetesCredentials{authMethod: authCfg.authMethod, audience: authCfg.audience},
+		credentials: kubernetesCredentials{authMethod: authCfg.AuthMethod, audience: authCfg.Audience},
 		acl:         r.acl,
 	}
 }
@@ -166,7 +168,15 @@ func (r *Client) applyToken(token *consulToken) {
 	r.token.val.Store(token.secretID)
 }
 
+// SecretId returns the ACL token the client sends to Consul: the configured [ClientConfig.Token], or the token of the
+// last successful login or refresh. It returns an empty string until [Client.Login] succeeds when no token is configured.
 func (r *Client) SecretId() string {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	if r.token == nil {
+		return ""
+	}
 	tokenValue, _ := r.token.val.Load().(string)
 	return tokenValue
 }

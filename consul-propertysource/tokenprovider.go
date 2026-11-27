@@ -4,12 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"strings"
 	"time"
 
 	consulApi "github.com/hashicorp/consul/api"
 )
 
 var errConsulLogin = errors.New("failed to log in to Consul")
+
+const consulACLDisabledMessage = "ACL support disabled"
 
 type consulToken struct {
 	secretID       string
@@ -40,6 +44,10 @@ func (p *loginTokenProvider) GetToken(ctx context.Context) (*consulToken, error)
 		AuthMethod:  authMethod,
 		BearerToken: bearer,
 	}, nil)
+	if isConsulACLDisabled(err) {
+		logger.InfoC(ctx, "Consul ACLs are disabled: working without a Consul token")
+		return &consulToken{}, nil
+	}
 	if err != nil {
 		return nil, fmt.Errorf("%w with auth method '%s': %w", errConsulLogin, authMethod, err)
 	}
@@ -49,4 +57,15 @@ func (p *loginTokenProvider) GetToken(ctx context.Context) (*consulToken, error)
 		expirationTime: aclToken.ExpirationTime,
 		authMethod:     aclToken.AuthMethod,
 	}, nil
+}
+
+// IsACLDisabled reports whether a Consul HTTP response means that the Consul cluster has its ACL system disabled:
+// statusCode is 401 and body is "ACL support disabled", surrounding whitespace ignored.
+func IsACLDisabled(statusCode int, body string) bool {
+	return statusCode == http.StatusUnauthorized && strings.TrimSpace(body) == consulACLDisabledMessage
+}
+
+func isConsulACLDisabled(err error) bool {
+	var statusErr consulApi.StatusError
+	return errors.As(err, &statusErr) && IsACLDisabled(statusErr.Code, statusErr.Body)
 }
